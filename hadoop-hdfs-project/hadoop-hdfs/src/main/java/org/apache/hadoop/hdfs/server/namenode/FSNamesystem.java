@@ -776,7 +776,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     long loadStart = monotonicNow();
     try {
-      namesystem.loadFSImage(startOpt);
+      namesystem.loadFSImage(startOpt); // 真正装载的就是文件目录的映像
     } catch (IOException ioe) {
       LOG.warn("Encountered exception loading fsimage", ioe);
       fsImage.close();

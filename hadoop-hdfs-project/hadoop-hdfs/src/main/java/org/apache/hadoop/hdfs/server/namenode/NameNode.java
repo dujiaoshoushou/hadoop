@@ -399,7 +399,7 @@ public class NameNode extends ReconfigurableBase implements
   public static final Log MetricsLog =
       LogFactory.getLog("NameNodeMetricsLog");
 
-  protected FSNamesystem namesystem; 
+  protected FSNamesystem namesystem;  // HDFS的目录系统
   protected final NamenodeRole role;
   private volatile HAState state;
   private final boolean haEnabled;
@@ -411,18 +411,18 @@ public class NameNode extends ReconfigurableBase implements
   private final static int HEALTH_MONITOR_WARN_THRESHOLD_MS = 5000;
   
   /** httpServer */
-  protected NameNodeHttpServer httpServer;
+  protected NameNodeHttpServer httpServer; // 为通过Http浏览器管理HDFS提供Web服务
   private Thread emptier;
   /** only used for testing purposes  */
   protected boolean stopRequested = false;
   /** Registration information of this name-node  */
-  protected NamenodeRegistration nodeRegistration;
+  protected NamenodeRegistration nodeRegistration; // 这个NameNode的登记信息
   /** Activated plug-ins. */
   private List<ServicePlugin> plugins;
   
-  private NameNodeRpcServer rpcServer;
+  private NameNodeRpcServer rpcServer;  // 提供RPC服务
 
-  private JvmPauseMonitor pauseMonitor;
+  private JvmPauseMonitor pauseMonitor; // 监视jvm的运行是否停滞
   private GcTimeMonitor gcTimeMonitor;
   private ObjectName nameNodeStatusBeanName;
   protected final Tracer tracer;
@@ -434,7 +434,7 @@ public class NameNode extends ReconfigurableBase implements
    * or the name service. For HA configurations using logical URI, it
    * will be the logical address.
    */
-  private String clientNamenodeAddress;
+  private String clientNamenodeAddress; // namenode的网址
   
   /** Format a new filesystem.  Destroys any filesystem that may already
    * exist at this location.  **/
@@ -757,10 +757,10 @@ public class NameNode extends ReconfigurableBase implements
       startHttpServer(conf);
     }
 
-    loadNamesystem(conf);
+    loadNamesystem(conf); // 装载FSNameSystem
     startAliasMapServerIfNecessary(conf);
 
-    rpcServer = createRpcServer(conf);
+    rpcServer = createRpcServer(conf); // 创建RPC服务
 
     initReconfigurableBackoffKey();
 
@@ -780,7 +780,7 @@ public class NameNode extends ReconfigurableBase implements
       }
     }
 
-    startCommonServices(conf);
+    startCommonServices(conf); // 启动namenode中的RPC服务
     startMetricsLogger(conf);
   }
 
@@ -864,22 +864,22 @@ public class NameNode extends ReconfigurableBase implements
     if (NamenodeRole.NAMENODE != role) {
       startHttpServer(conf);
       httpServer.setNameNodeAddress(getNameNodeAddress());
-      httpServer.setFSImage(getFSImage());
+      httpServer.setFSImage(getFSImage()); //  让后httpServer 知道 FSImage 镜像
       if (levelDBAliasMapServer != null) {
         httpServer.setAliasMap(levelDBAliasMapServer.getAliasMap());
       }
     }
-    rpcServer.start();
+    rpcServer.start(); // 启用RPC服务
     try {
       plugins = conf.getInstances(DFS_NAMENODE_PLUGINS_KEY,
-          ServicePlugin.class);
+          ServicePlugin.class);  // 从配置文件里读取"dfs.namenode.plugins
     } catch (RuntimeException e) {
       String pluginsValue = conf.get(DFS_NAMENODE_PLUGINS_KEY);
       LOG.error("Unable to load NameNode plugins. Specified list of plugins: " +
           pluginsValue, e);
       throw e;
     }
-    for (ServicePlugin p: plugins) {
+    for (ServicePlugin p: plugins) { // 如果有的话，就启用所有的ServicePlugin
       try {
         p.start(this);
       } catch (Throwable t) {
@@ -1238,6 +1238,7 @@ public class NameNode extends ReconfigurableBase implements
     List<URI> dirsToPrompt = new ArrayList<URI>();
     dirsToPrompt.addAll(nameDirsToFormat);
     dirsToPrompt.addAll(sharedDirs);
+    // 获取排序后的元空间编辑路径
     List<URI> editDirsToFormat = 
                  FSNamesystem.getNamespaceEditsDirs(conf);
 
@@ -1718,7 +1719,7 @@ public class NameNode extends ReconfigurableBase implements
 
     boolean aborted = false;
     switch (startOpt) {
-    case FORMAT:
+    case FORMAT: // 格式化HDFS
       aborted = format(conf, startOpt.getForceFormat(),
           startOpt.getInteractiveFormat());
       terminate(aborted ? 1 : 0);
@@ -1728,13 +1729,13 @@ public class NameNode extends ReconfigurableBase implements
       LOG.info("Generated new cluster id: {}", clusterID);
       terminate(0);
       return null;
-    case ROLLBACK:
+    case ROLLBACK: // 回滚到原先的版本
       aborted = doRollback(conf, true);
       terminate(aborted ? 1 : 0);
       return null; // avoid warning
-    case BOOTSTRAPSTANDBY:
+    case BOOTSTRAPSTANDBY: // 使安排与NameNode热备份的节点复制当班NameNode的内容，以形成热备份
       String[] toolArgs = Arrays.copyOfRange(argv, 1, argv.length);
-      int rc = BootstrapStandby.run(toolArgs, conf);
+      int rc = BootstrapStandby.run(toolArgs, conf); // 用与HA
       terminate(rc);
       return null; // avoid warning
     case INITIALIZESHAREDEDITS:
@@ -1744,18 +1745,18 @@ public class NameNode extends ReconfigurableBase implements
       terminate(aborted ? 1 : 0);
       return null; // avoid warning
     case BACKUP:
-    case CHECKPOINT:
+    case CHECKPOINT: // 启动本节点为backup 或 checkpoin节点
       NamenodeRole role = startOpt.toNodeRole();
       DefaultMetricsSystem.initialize(role.toString().replace(" ", ""));
       return new BackupNode(conf, role);
-    case RECOVER:
+    case RECOVER:  // 试图修复损坏的HDFS文件系统目录
       NameNode.doRecovery(startOpt, conf);
       return null;
     case METADATAVERSION:
       printMetadataVersion(conf);
       terminate(0);
       return null; // avoid javac warning
-    case UPGRADEONLY:
+    case UPGRADEONLY:  // 仅进行版本更新升级
       DefaultMetricsSystem.initialize("NameNode");
       new NameNode(conf);
       terminate(0);

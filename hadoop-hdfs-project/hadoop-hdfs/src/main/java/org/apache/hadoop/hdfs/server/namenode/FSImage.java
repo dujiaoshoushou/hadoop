@@ -185,7 +185,7 @@ public class FSImage implements Closeable {
     LOG.info("Allocated new BlockPoolId: " + ns.getBlockPoolID());
     ns.clusterID = clusterId;
     
-    storage.format(ns); // 创建元空间
+    storage.format(ns); // 格式化所有可用的存储目录
     editLog.formatNonFileJournals(ns, force); // 创建JauranlsNode集群的FSEditlog文件
     saveFSImageInAllDirs(fsn, 0); // 保存Fsimage文件到namenode qdir路径中
   }
@@ -1210,7 +1210,7 @@ public class FSImage implements Closeable {
     currentlyCheckpointing.remove(txid);
   }
 
-  private synchronized void saveFSImageInAllDirs(FSNamesystem source,
+  private synchronized void  saveFSImageInAllDirs(FSNamesystem source,
       NameNodeFile nnf, long txid, Canceler canceler) throws IOException {
     StartupProgress prog = NameNode.getStartupProgress();
     prog.beginPhase(Phase.SAVING_CHECKPOINT);
