@@ -1,0 +1,24 @@
+<configuration>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/Users/lujun/hadoop/namenode_dir</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/Users/lujun/hadoop/datanode_dir</value>
+    </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>3</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address</name>
+        <value>localhost:9870</value>
+    </property>
+    <!--开启webHDFS-->
+    <!--<property>
+        <name>dfs.webhdfs.enabled</name>
+        <value>true</value>
+    </property>-->
+    
+</configuration>

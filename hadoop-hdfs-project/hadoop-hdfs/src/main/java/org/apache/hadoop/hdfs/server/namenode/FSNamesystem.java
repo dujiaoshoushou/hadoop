@@ -1618,7 +1618,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           "of the file system meta-data.");
     } else if (dirNames.isEmpty()) {
       dirNames = Collections.singletonList(
-          DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_DEFAULT);
+          DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_DEFAULT); //如果没有配置，hadoop默认为file:///tmp/hadoop/dfs/name
     }
     return Util.stringCollectionAsURIs(dirNames);
   }

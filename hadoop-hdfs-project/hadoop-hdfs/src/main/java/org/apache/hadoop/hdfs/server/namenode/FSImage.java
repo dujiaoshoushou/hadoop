@@ -185,9 +185,9 @@ public class FSImage implements Closeable {
     LOG.info("Allocated new BlockPoolId: " + ns.getBlockPoolID());
     ns.clusterID = clusterId;
     
-    storage.format(ns);
-    editLog.formatNonFileJournals(ns, force);
-    saveFSImageInAllDirs(fsn, 0);
+    storage.format(ns); // 创建元空间
+    editLog.formatNonFileJournals(ns, force); // 创建JauranlsNode集群的FSEditlog文件
+    saveFSImageInAllDirs(fsn, 0); // 保存Fsimage文件到namenode qdir路径中
   }
   
   /**

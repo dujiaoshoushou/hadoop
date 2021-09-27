@@ -1,0 +1,20 @@
+<configuration>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>file:/Users/lujun/hadoop/tmp</value>
+        <description>Abase	for	other	temporary	directories.</description>
+    </property>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+<!-- 开启HttpFS -->
+    <!--<property>
+        <name>hadoop.proxyuser.Ginger.hosts</name>
+        <value>*</value>
+    </property>
+    <property>
+        <name>hadoop.proxyuser.Ginger.groups</name>
+        <value>*</value>
+    </property>-->
+</configuration>

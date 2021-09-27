@@ -1216,18 +1216,24 @@ public class NameNode extends ReconfigurableBase implements
    */
   private static boolean format(Configuration conf, boolean force,
       boolean isInteractive) throws IOException {
-    String nsId = DFSUtil.getNamenodeNameServiceId(conf);
-    String namenodeId = HAUtil.getNameNodeId(conf, nsId);
-    initializeGenericKeys(conf, nsId, namenodeId);
+    String nsId = DFSUtil.getNamenodeNameServiceId(conf);  // 获取nameNodeService的Id
+    String namenodeId = HAUtil.getNameNodeId(conf, nsId);  // 获取namenode的id
+    initializeGenericKeys(conf, nsId, namenodeId);  // 合并namenode的id
     checkAllowFormat(conf);
 
-    if (UserGroupInformation.isSecurityEnabled()) {
+    if (UserGroupInformation.isSecurityEnabled()) {  // 判断是否启用了hadoop的用户组的安全性校验
       InetSocketAddress socAddr = DFSUtilClient.getNNAddress(conf);
       SecurityUtil.login(conf, DFS_NAMENODE_KEYTAB_FILE_KEY,
           DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY, socAddr.getHostName());
     }
-    
+
+    // 配置文件中的dfs.namenode.name.dir路径
+    // 如果没有配置，这为file:///tmp/hadoop/dfs/name（hadoop默认）
     Collection<URI> nameDirsToFormat = FSNamesystem.getNamespaceDirs(conf);
+    // 获取Hadoop HA集群中的共享HA 集群中多个名称节点之间共享存储上的目录。
+    // 该目录将由活动写入并由备用读取，以保持名称空间同步。
+    // 这个目录不需要在上面的dfs.namenode.edits.dir中列出。
+    // 在非 HA 集群中，它应该留空。
     List<URI> sharedDirs = FSNamesystem.getSharedEditsDirs(conf);
     List<URI> dirsToPrompt = new ArrayList<URI>();
     dirsToPrompt.addAll(nameDirsToFormat);
@@ -1243,10 +1249,13 @@ public class NameNode extends ReconfigurableBase implements
     }
 
     LOG.info("Formatting using clusterid: {}", clusterId);
-    
+    // 通过namenode dir 和 共享目录实例化FSImage 目录文件系统镜像类，主要管理安全点检查和日志的记录
+    // FSImage 实例化 NNStorage 和  FSEditLog
     FSImage fsImage = new FSImage(conf, nameDirsToFormat, editDirsToFormat);
     try {
+      // 根据配置文件和FSImage实例化目录文件系统，FSNamesystem
       FSNamesystem fsn = new FSNamesystem(conf, fsImage);
+      // 根据日志初始化JournalNode集群是否写入
       fsImage.getEditLog().initJournalsForWrite();
 
       // Abort NameNode format if reformat is disabled and if
@@ -1268,7 +1277,7 @@ public class NameNode extends ReconfigurableBase implements
         return true; // aborted
       }
 
-      fsImage.format(fsn, clusterId, force);
+      fsImage.format(fsn, clusterId, force); // 格式话nameNode的目录，即FSEditLog 文件 和 FSImage 的存放目录
     } catch (IOException ioe) {
       LOG.warn("Encountered exception during format", ioe);
       fsImage.close();
