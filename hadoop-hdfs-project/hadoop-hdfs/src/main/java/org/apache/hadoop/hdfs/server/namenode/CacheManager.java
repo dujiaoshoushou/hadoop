@@ -144,7 +144,7 @@ public class CacheManager {
    * Cache pools, sorted by name.
    */
   private final TreeMap<String, CachePool> cachePools =
-      new TreeMap<String, CachePool>();
+      new TreeMap<String, CachePool>();  // 记录着缓冲在所有DataNode上的块
 
   /**
    * Maximum number of cache pools to list in one operation.

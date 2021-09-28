@@ -177,8 +177,8 @@ public class BlockManager implements BlockStatsMXBean {
 
   private final BlockManagerSafeMode bmSafeMode;
 
-  private final DatanodeManager datanodeManager;
-  private final HeartbeatManager heartbeatManager;
+  private final DatanodeManager datanodeManager; // 管理着与诸多DataNode相关的信息
+  private final HeartbeatManager heartbeatManager; // 管理着与诸多DataNode的联络
   private final BlockTokenSecretManager blockTokenSecretManager;
 
   // Block pool ID used by this namenode

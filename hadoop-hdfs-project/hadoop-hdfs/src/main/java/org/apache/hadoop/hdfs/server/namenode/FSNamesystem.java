@@ -488,11 +488,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private final List<AuditLogger> auditLoggers;
 
   /** The namespace tree. */
-  FSDirectory dir;
-  private BlockManager blockManager;
+  FSDirectory dir;  // 目录框架
+  private BlockManager blockManager; // 数据块管理器
   private final SnapshotManager snapshotManager;
-  private final CacheManager cacheManager;
-  private final DatanodeStatistics datanodeStatistics;
+  private final CacheManager cacheManager; // 缓存管理器
+  private final DatanodeStatistics datanodeStatistics;  // 数据节点统计信息
 
   private String nameserviceId;
 
@@ -551,7 +551,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private final long resourceRecheckInterval;
 
   // The actual resource checker instance.
-  NameNodeResourceChecker nnResourceChecker;
+  NameNodeResourceChecker nnResourceChecker; // 为资源检查线程提供操作方法
 
   private final FsServerDefaults serverDefaults;
   private final ReplaceDatanodeOnFailure dtpReplaceDatanodeOnFailure;
@@ -609,7 +609,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private volatile boolean imageLoaded = false;
   private final Condition cond;
 
-  private final FSImage fsImage;
+  private final FSImage fsImage; // 需要保存在磁盘上的文件系统映像
 
   private final TopConf topConf;
   private TopMetrics topMetrics;
@@ -821,7 +821,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     cond = fsLock.newWriteLockCondition();
     cpLock = new ReentrantLock();
 
-    this.fsImage = fsImage;
+    this.fsImage = fsImage;  // 作为参数传下来的一个可能有待加载内容的FSImage对象
     try {
       resourceRecheckInterval = conf.getLong(
           DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY,
@@ -866,7 +866,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       }
 
       // block manager needs the haEnabled initialized
+      // 创建块管理器
       this.blockManager = new BlockManager(this, haEnabled, conf);
+      // 获取统计信息
       this.datanodeStatistics = blockManager.getDatanodeManager().getDatanodeStatistics();
 
       // Get the checksum type from config
@@ -902,10 +904,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
       this.maxFsObjects = conf.getLong(DFS_NAMENODE_MAX_OBJECTS_KEY, 
                                        DFS_NAMENODE_MAX_OBJECTS_DEFAULT);
-
+      // 从配置文件获取最小块容量，默认是64mb
       this.minBlockSize = conf.getLongBytes(
           DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY,
           DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_DEFAULT);
+      // 从配置文件获取单个文件的最大块数
       this.maxBlocksPerFile = conf.getLong(DFSConfigKeys.DFS_NAMENODE_MAX_BLOCKS_PER_FILE_KEY,
           DFSConfigKeys.DFS_NAMENODE_MAX_BLOCKS_PER_FILE_DEFAULT);
       this.batchedListingLimit = conf.getInt(
@@ -970,8 +973,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           DFS_NAMENODE_DELEGATION_TOKEN_ALWAYS_USE_DEFAULT);
 
       this.dtSecretManager = createDelegationTokenSecretManager(conf);
+      // 创建目录框架
       this.dir = new FSDirectory(this, conf);
       this.snapshotManager = new SnapshotManager(conf, dir);
+      // 创建缓存管理器
       this.cacheManager = new CacheManager(this, conf, blockManager);
       // Init ErasureCodingPolicyManager instance.
       ErasureCodingPolicyManager.getInstance().init(conf);
@@ -1182,17 +1187,21 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     final FSImage fsImage = getFSImage();
 
     // format before starting up if requested
+    // startOpt是命令行中的启动选项，
+    // 如果要求格式化，就先格式化
     if (startOpt == StartupOption.FORMAT) {
       // reuse current id
       fsImage.format(this, fsImage.getStorage().determineClusterId(), false);
-
+      // 然后按照正常状态处理
       startOpt = StartupOption.REGULAR;
     }
     boolean success = false;
     writeLock();
     try {
       // We shouldn't be calling saveNamespace if we've come up in standby state.
+      // 根据startOpt创建用于Recover的Context
       MetaRecoveryContext recovery = startOpt.createRecoveryContext();
+      // 从宿主机文件系统读入映像文件和EditLog，加以合并处理
       final boolean staleImage
           = fsImage.recoverTransitionRead(startOpt, this, recovery);
       if (RollingUpgradeStartupOption.ROLLBACK.matches(startOpt)) {
@@ -1202,7 +1211,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       LOG.info("Need to save fs image? " + needToSave
           + " (staleImage=" + staleImage + ", haEnabled=" + haEnabled
           + ", isRollingUpgrade=" + isRollingUpgrade() + ")");
-      if (needToSave) {
+      if (needToSave) { // 如果需要的话，就将合并后的映像写回
         fsImage.saveNamespace(this);
       } else {
         // No need to save, so mark the phase done.
@@ -1214,7 +1223,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       // we shouldn't do it when coming up in standby state
       if (!haEnabled || (haEnabled && startOpt == StartupOption.UPGRADE)
           || (haEnabled && startOpt == StartupOption.UPGRADEONLY)) {
-        fsImage.openEditLogForWrite(getEffectiveLayoutVersion());
+        fsImage.openEditLogForWrite(getEffectiveLayoutVersion());  // 老的Editlog已经不需要了，准备写新的EditLog
       }
       success = true;
     } finally {
