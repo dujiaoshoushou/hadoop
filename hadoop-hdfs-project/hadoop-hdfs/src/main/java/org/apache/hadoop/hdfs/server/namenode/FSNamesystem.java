@@ -1272,7 +1272,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     writeLock();
     this.haContext = haContext;
     try {
-      nnResourceChecker = new NameNodeResourceChecker(conf);
+      nnResourceChecker = new NameNodeResourceChecker(conf); // 检查资源线程使用
       checkAvailableResources();
       assert !blockManager.isPopulatingReplQueues();
       StartupProgress prog = NameNode.getStartupProgress();
@@ -1280,7 +1280,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       long completeBlocksTotal = getCompleteBlocksTotal();
       prog.setTotal(Phase.SAFEMODE, STEP_AWAITING_REPORTED_BLOCKS,
           completeBlocksTotal);
-      blockManager.activate(conf, completeBlocksTotal);
+      blockManager.activate(conf, completeBlocksTotal); // 启用blockManager
     } finally {
       writeUnlock("startCommonServices");
     }
@@ -1486,7 +1486,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   /**
    * Start services required in standby or observer state
    * 
-   * @throws IOException
+   * @throws IStandOException
+   *
+   * 用作NameNode热备份的节点
    */
   void startStandbyServices(final Configuration conf, boolean isObserver)
       throws IOException {
@@ -1874,11 +1876,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     try {
       checkOperation(OperationCategory.READ);
       synchronized(metaSaveLock) {
-        File file = new File(System.getProperty("hadoop.log.dir"), filename);
+        File file = new File(System.getProperty("hadoop.log.dir"), filename); // 创建一个文件
         PrintWriter out = new PrintWriter(new BufferedWriter(
                 new OutputStreamWriter(Files.newOutputStream(file.toPath()),
                         Charsets.UTF_8)));
-        metaSave(out);
+        metaSave(out); // 将PrintWriter
         out.flush();
         out.close();
       }
@@ -1896,7 +1898,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         + " blocks = " + (totalInodes + totalBlocks)
         + " total filesystem objects");
 
-    blockManager.metaSave(out);
+    blockManager.metaSave(out); // 调用blockManager.metaSave方法存储数据
   }
 
   /**
@@ -4244,7 +4246,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   void registerDatanode(DatanodeRegistration nodeReg) throws IOException {
     writeLock();
     try {
-      blockManager.registerDatanode(nodeReg);
+      blockManager.registerDatanode(nodeReg); // 接受DataNode的注册
     } finally {
       writeUnlock("registerDatanode");
     }
@@ -4270,6 +4272,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    *
    * @return an array of datanode commands
    * @throws IOException
+   *
+   * 接受并处理DataNode的心跳信号
    */
   HeartbeatResponse handleHeartbeat(DatanodeRegistration nodeReg,
       StorageReport[] reports, long cacheCapacity, long cacheUsed,
@@ -4376,6 +4380,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * there are found to be insufficient resources available, causes the NN to
    * enter safe mode. If resources are later found to have returned to
    * acceptable levels, this daemon will cause the NN to exit safe mode.
+   * 资源检查线程
    */
   class NameNodeResourceMonitor implements Runnable  {
     boolean shouldNNRmRun = true;
@@ -4409,6 +4414,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     }
  }
 
+  /**
+   * Editlog 跟进线程
+   */
   class NameNodeEditLogRoller implements Runnable {
 
     private boolean shouldRun = true;
@@ -4774,6 +4782,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     }
   }
 
+  /**
+   * 为客户端提供dataNode报告
+   * @param type
+   * @return
+   * @throws IOException
+   */
   DatanodeInfo[] datanodeReport(final DatanodeReportType type)
       throws IOException {
     String operationName = "datanodeReport";
@@ -4820,6 +4834,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * Save namespace image.
    * This will save current namespace into fsimage file and empty edits file.
    * Requires superuser privilege and safe mode.
+   * 保存当前的NameSpace,即文件系统映像FSImage
    */
   boolean saveNamespace(final long timeWindow, final long txGap)
       throws IOException {
@@ -4837,7 +4852,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         throw new IOException("Safe mode should be turned ON "
             + "in order to create namespace image.");
       }
-      saved = getFSImage().saveNamespace(timeWindow, txGap, this);
+      saved = getFSImage().saveNamespace(timeWindow, txGap, this); // 调用文件映像的保存操作
     } finally {
       readUnlock(operationName);
       cpUnlock();

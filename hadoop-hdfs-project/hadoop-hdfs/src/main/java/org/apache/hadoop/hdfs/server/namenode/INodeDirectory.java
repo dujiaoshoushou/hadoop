@@ -71,7 +71,7 @@ public class INodeDirectory extends INodeWithAdditionalFields
 
   static final byte[] ROOT_NAME = DFSUtil.string2Bytes("");
 
-  private List<INode> children = null;
+  private List<INode> children = null; // 当前目录下面的所有子节点
   
   /** constructor */
   public INodeDirectory(long id, byte[] name, PermissionStatus permissions,
@@ -199,6 +199,11 @@ public class INodeDirectory extends INodeWithAdditionalFields
     return q;
   }
 
+  /**
+   * 在当前目录中寻找名为name的节点，采用二分查找法
+   * @param name
+   * @return
+   */
   int searchChildren(byte[] name) {
     return children == null? -1: Collections.binarySearch(children, name);
   }
@@ -502,6 +507,8 @@ public class INodeDirectory extends INodeWithAdditionalFields
    *
    * @param name a child's name
    * @return the index of the next child
+   *
+   *
    */
   static int nextChild(ReadOnlyList<INode> children, byte[] name) {
     if (name.length == 0) { // empty name
@@ -557,6 +564,7 @@ public class INodeDirectory extends INodeWithAdditionalFields
    *                   the parent already has the proper mod time
    * @return false if the child with this name already exists; 
    *         otherwise, return true;
+   *         在当前目录节点中增加一个节点，同名的操作方法有三个
    */
   public boolean addChild(INode node, final boolean setModTime,
       final int latestSnapshotId) {
@@ -583,7 +591,7 @@ public class INodeDirectory extends INodeWithAdditionalFields
 
   public boolean addChild(INode node) {
     final int low = searchChildren(node.getLocalNameBytes());
-    if (low >= 0) {
+    if (low >= 0) { // 同名节点以存在，不能添加
       return false;
     }
     addChild(node, low);

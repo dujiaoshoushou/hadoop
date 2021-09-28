@@ -1159,7 +1159,7 @@ public class FSImage implements Closeable {
     }
     try {
       try {
-        saveFSImageInAllDirs(source, nnf, imageTxId, canceler);
+        saveFSImageInAllDirs(source, nnf, imageTxId, canceler); // 保存文件系统映像涉及的多个目录
         if (!source.isRollingUpgrade()) {
           updateStorageVersion();
         }
@@ -1171,7 +1171,7 @@ public class FSImage implements Closeable {
           // Even if the namespace save was cancelled, this marker
           // is only used to determine what transaction ID is required
           // for startup. So, it doesn't hurt to update it unnecessarily.
-          storage.writeTransactionIdFileToStorage(imageTxId + 1);
+          storage.writeTransactionIdFileToStorage(imageTxId + 1); // 写TransactionId文件
         }
       }
     } finally {

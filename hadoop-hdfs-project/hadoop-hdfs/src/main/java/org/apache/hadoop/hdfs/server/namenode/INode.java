@@ -60,7 +60,7 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
   public static final Logger LOG = LoggerFactory.getLogger(INode.class);
 
   /** parent is either an {@link INodeDirectory} or an {@link INodeReference}.*/
-  private INode parent = null;
+  private INode parent = null; // 指向父节点
 
   INode(INode parent) {
     this.parent = parent;
@@ -74,7 +74,7 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
    */
   final boolean isRoot() {
     return getLocalNameBytes().length == 0;
-  }
+  } // 判断是否为根节点
 
   /** Get the {@link PermissionStatus} */
   abstract PermissionStatus getPermissionStatus(int snapshotId);
@@ -300,7 +300,9 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
    */
   abstract void recordModification(final int latestSnapshotId);
 
-  /** Check whether it's a reference. */
+  /** Check whether it's a reference.
+   * 判断本INode是为转引节点
+   * */
   public boolean isReference() {
     return false;
   }
@@ -316,9 +318,11 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
    */
   public boolean isFile() {
     return false;
-  }
+  } // 判断INode是否是文件节点
 
-  /** Cast this inode to an {@link INodeFile}.  */
+  /** Cast this inode to an {@link INodeFile}.
+   * 把本INode当做文件节点是不允许的。
+   * */
   public INodeFile asFile() {
     throw new IllegalStateException("Current inode is not a file: "
         + this.toDetailString());
@@ -329,9 +333,11 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
    */
   public boolean isDirectory() {
     return false;
-  }
+  } // 判断INode是否为目录节点
 
-  /** Cast this inode to an {@link INodeDirectory}.  */
+  /** Cast this inode to an {@link INodeDirectory}.
+   * 把本INode当做目录节点是不允许的。
+   * */
   public INodeDirectory asDirectory() {
     throw new IllegalStateException("Current inode is not a directory: "
         + this.toDetailString());
@@ -339,6 +345,7 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
 
   /**
    * Check whether it's a symlink
+   * 判断本INode是否为符号连接节点
    */
   public boolean isSymlink() {
     return false;

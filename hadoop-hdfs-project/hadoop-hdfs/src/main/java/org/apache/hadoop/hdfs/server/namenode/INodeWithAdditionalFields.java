@@ -96,7 +96,7 @@ public abstract class INodeWithAdditionalFields extends INode
   }
 
   /** The inode id. */
-  final private long id;
+  final private long id; // 节点号
   /**
    *  The inode name is in java UTF8 encoding; 
    *  The name in HdfsFileStatus should keep the same encoding as this.
@@ -104,18 +104,18 @@ public abstract class INodeWithAdditionalFields extends INode
    *  clientProtocol are changed; The decoding at the client
    *  side should change accordingly.
    */
-  private byte[] name = null;
+  private byte[] name = null; // 节点名
   /** 
    * Permission encoded using {@link PermissionStatusFormat}.
    * Codes other than {@link #clonePermissionStatus(INodeWithAdditionalFields)}
    * and {@link #updatePermissionStatus(PermissionStatusFormat, long)}
    * should not modify it.
    */
-  private long permission = 0L;
+  private long permission = 0L; // 访问许可
   /** The last modification time*/
-  private long modificationTime = 0L;
+  private long modificationTime = 0L; // 最后一次修改时间
   /** The last access time*/
-  private long accessTime = 0L;
+  private long accessTime = 0L;  // 最后一次访问时间
 
   /** For implementing {@link LinkedElement}. */
   private LinkedElement next = null;
