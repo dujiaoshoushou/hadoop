@@ -248,9 +248,9 @@ public class INodeFile extends INodeWithAdditionalFields
 
   }
 
-  private long header = 0L;
+  private long header = 0L; // preferredBlockSize、replication 和 storagePolicyID 三种信息编码在一起
 
-  private BlockInfo[] blocks;
+  private BlockInfo[] blocks; // 这个数组中的每个元素都是对于一个块的描述
 
   INodeFile(long id, byte[] name, PermissionStatus permissions, long mtime,
             long atime, BlockInfo[] blklist, short replication,
@@ -325,6 +325,12 @@ public class INodeFile extends INodeWithAdditionalFields
     return getFileUnderConstructionFeature() != null;
   }
 
+  /**
+   * 把文件设置成正在构建中
+   * @param clientName
+   * @param clientMachine
+   * @return
+   */
   INodeFile toUnderConstruction(String clientName, String clientMachine) {
     Preconditions.checkState(!isUnderConstruction(),
         "file is already under construction");
@@ -337,6 +343,7 @@ public class INodeFile extends INodeWithAdditionalFields
   /**
    * Convert the file to a complete file, i.e., to remove the Under-Construction
    * feature.
+   * 把文件设置成已完成构建
    */
   void toCompleteFile(long mtime, int numCommittedAllowed, short minReplication) {
     final FileUnderConstructionFeature uc = getFileUnderConstructionFeature();
@@ -389,6 +396,11 @@ public class INodeFile extends INodeWithAdditionalFields
     return null;
   }
 
+  /**
+   * 使blk成为本文件的第（index + 1）个块
+   * @param index
+   * @param blk
+   */
   @Override // BlockCollection
   public void setBlock(int index, BlockInfo blk) {
     Preconditions.checkArgument(blk.isStriped() == this.isStriped());
@@ -546,7 +558,9 @@ public class INodeFile extends INodeWithAdditionalFields
     return (short) (ecPolicy.getNumDataUnits() + ecPolicy.getNumParityUnits());
   }
 
-  /** Set the replication factor of this file. */
+  /** Set the replication factor of this file.
+   * 设置文件的块存储副本数量
+   * */
   private void setFileReplication(short replication) {
     long layoutRedundancy =
         HeaderFormat.BLOCK_LAYOUT_AND_REDUNDANCY.BITS.retrieve(header);
@@ -642,12 +656,15 @@ public class INodeFile extends INodeWithAdditionalFields
     return HeaderFormat.getBlockType(header);
   }
 
+  // 读取文件节点的header
   @Override // INodeFileAttributes
   public long getHeaderLong() {
     return header;
   }
 
-  /** @return the blocks of the file. */
+  /** @return the blocks of the file.
+   * 读取本文件的blocks数组
+   * */
   @Override // BlockCollection
   public BlockInfo[] getBlocks() {
     return this.blocks;
@@ -707,9 +724,9 @@ public class INodeFile extends INodeWithAdditionalFields
    */
   void addBlock(BlockInfo newblock) {
     Preconditions.checkArgument(newblock.isStriped() == this.isStriped());
-    if (this.blocks.length == 0) {
+    if (this.blocks.length == 0) { // 如果还没有blocks数组就创建之。这发生在文件的第一个块
       this.setBlocks(new BlockInfo[]{newblock});
-    } else {
+    } else { // 不是第一个块，已经有了bloks数组
       int size = this.blocks.length;
       BlockInfo[] newlist = new BlockInfo[size + 1];
       System.arraycopy(this.blocks, 0, newlist, 0, size);

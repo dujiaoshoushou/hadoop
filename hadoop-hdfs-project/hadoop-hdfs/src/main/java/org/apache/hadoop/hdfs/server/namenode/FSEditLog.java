@@ -144,7 +144,7 @@ public class FSEditLog implements LogsPurgeable {
    * log. The log states will then revert to behaving as they do in a non-HA
    * setup.
    */
-  private enum State {
+  private enum State { // 日志状态
     UNINITIALIZED,
     BETWEEN_LOG_SEGMENTS,
     IN_SEGMENT,
@@ -154,10 +154,10 @@ public class FSEditLog implements LogsPurgeable {
   private State state = State.UNINITIALIZED;
   
   //initialize
-  private JournalSet journalSet = null;
+  private JournalSet journalSet = null; // 一组JournalManager，管理着各自的日志存储介质
 
   @VisibleForTesting
-  EditLogOutputStream editLogStream = null;
+  EditLogOutputStream editLogStream = null; // EditLog对外的输出通道，通向具体的Journal
 
   // a monotonically increasing counter that represents transactionIds.
   // All of the threads which update/increment txid are synchronized,
@@ -189,7 +189,7 @@ public class FSEditLog implements LogsPurgeable {
   private final NNStorage storage;
   private final Configuration conf;
 
-  private final List<URI> editsDirs;
+  private final List<URI> editsDirs; // 用于日志的目录路径
 
   protected final OpInstanceCache cache = new OpInstanceCache();
 
@@ -278,7 +278,7 @@ public class FSEditLog implements LogsPurgeable {
   private synchronized void initJournals(List<URI> dirs) {
     int minimumRedundantJournals = conf.getInt(
         DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_MINIMUM_KEY,
-        DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_MINIMUM_DEFAULT);
+        DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_MINIMUM_DEFAULT); // 最少一个JournalManager
 
     synchronized(journalSetLock) {
       journalSet = new JournalSet(minimumRedundantJournals);
@@ -290,7 +290,7 @@ public class FSEditLog implements LogsPurgeable {
           StorageDirectory sd = storage.getStorageDirectory(u);
           if (sd != null) {
             journalSet.add(new FileJournalManager(conf, sd, storage),
-                required, sharedEditsDirs.contains(u));
+                required, sharedEditsDirs.contains(u)); // 把FileJournalManager对象放入集合journalSet
           }
         } else {
           journalSet.add(createJournal(u), required,
@@ -507,8 +507,8 @@ public class FSEditLog implements LogsPurgeable {
    */
   synchronized void doneWithAutoSyncScheduling() {
     if (isAutoSyncScheduled) {
-      isAutoSyncScheduled = false;
-      notifyAll();
+      isAutoSyncScheduled = false; // 允许进入logEdit()临界区的线程前行
+      notifyAll(); // 唤醒正在等待的线程
     }
   }
   
@@ -522,7 +522,7 @@ public class FSEditLog implements LogsPurgeable {
     return editLogStream.shouldForceSync();
   }
   
-  private long beginTransaction() {
+  private long beginTransaction() { // 开始一次日志写入
     assert Thread.holdsLock(this);
     // get a new transactionId
     txid++;
@@ -535,7 +535,7 @@ public class FSEditLog implements LogsPurgeable {
     return monotonicNow();
   }
   
-  private void endTransaction(long start) {
+  private void endTransaction(long start) { //结束一次日志写入
     assert Thread.holdsLock(this);
     
     // update statistics
@@ -643,7 +643,7 @@ public class FSEditLog implements LogsPurgeable {
    * concurrency with sync() should be synchronized and also call
    * waitForSyncToFinish() before assuming they are running alone.
    */
-  public void logSync() {
+  public void logSync() {  // 对缓冲着的日志进行同步
     // Fetch the transactionId of this thread.
     logSync(myTransactionId.get().txid);
   }
@@ -659,7 +659,7 @@ public class FSEditLog implements LogsPurgeable {
           printStatistics(false);
 
           // if somebody is already syncing, then wait
-          while (mytxid > synctxid && isSyncRunning) {
+          while (mytxid > synctxid && isSyncRunning) { //这里，mytxid是我要冲刷的那份记录的txid，synctxid是已经冲刷的记录的txid
             try {
               wait(1000);
             } catch (InterruptedException ie) {
@@ -668,6 +668,7 @@ public class FSEditLog implements LogsPurgeable {
   
           //
           // If this transaction was already flushed, then nothing to do
+          // 我的号已经过了，不用在要求冲刷（flush）了。
           //
           if (mytxid <= synctxid) {
             return;
@@ -686,7 +687,7 @@ public class FSEditLog implements LogsPurgeable {
             if (journalSet.isEmpty()) {
               throw new IOException("No journals available to flush");
             }
-            editLogStream.setReadyToFlush();
+            editLogStream.setReadyToFlush(); // swap buffers，双缓冲互换，为flush做好准备
           } catch (IOException e) {
             final String msg =
                 "Could not sync enough journals to persistent storage " +
@@ -700,7 +701,7 @@ public class FSEditLog implements LogsPurgeable {
           }
         } finally {
           // Prevent RuntimeException from blocking other log edit write 
-          doneWithAutoSyncScheduling();
+          doneWithAutoSyncScheduling(); //
         }
         //editLogStream may become null,
         //so store a local variable for flush.
@@ -977,7 +978,7 @@ public class FSEditLog implements LogsPurgeable {
 
   /**  Add set owner record to edit log */
   void logSetOwner(String src, String username, String groupname) {
-    SetOwnerOp op = SetOwnerOp.getInstance(cache.get())
+    SetOwnerOp op = SetOwnerOp.getInstance(cache.get()) // 注意cache是ThreadLocal，每个线程都有自己的cache
       .setSource(src)
       .setUser(username)
       .setGroup(groupname);
@@ -1353,6 +1354,7 @@ public class FSEditLog implements LogsPurgeable {
 
   /**
    * Remote namenode just has started a log segment, start log segment locally.
+   * 打开一个日志段
    */
   public synchronized void startLogSegment(long txid, 
       boolean abortCurrentLogSegment, int layoutVersion) throws IOException {
@@ -1436,6 +1438,7 @@ public class FSEditLog implements LogsPurgeable {
   /**
    * Finalize the current log segment.
    * Transitions from IN_SEGMENT state to BETWEEN_LOG_SEGMENTS state.
+   * 关闭当前日志段
    */
   public synchronized void endCurrentLogSegment(boolean writeEndTxn) {
     LOG.info("Ending log segment " + curSegmentTxId +
@@ -1488,6 +1491,7 @@ public class FSEditLog implements LogsPurgeable {
    * 
    * If the edit log is not open for write, then this call returns with no
    * effect.
+   * 冲洗掉日志中过老的记录
    */
   @Override
   public synchronized void purgeLogsOlderThan(final long minTxIdToKeep) {
@@ -1804,6 +1808,7 @@ public class FSEditLog implements LogsPurgeable {
    * @param uriScheme The uri scheme to look up.
    * @return the class of the journal implementation
    * @throws IllegalArgumentException if no class is configured for uri
+   * 获取用作Journal的类
    */
   static Class<? extends JournalManager> getJournalClass(Configuration conf,
                                String uriScheme) {
@@ -1832,6 +1837,7 @@ public class FSEditLog implements LogsPurgeable {
    * @param uri Uri to construct
    * @return The constructed journal manager
    * @throws IllegalArgumentException if no class is configured for uri
+   * 创建Journal对象
    */
   @VisibleForTesting
   JournalManager createJournal(URI uri) {

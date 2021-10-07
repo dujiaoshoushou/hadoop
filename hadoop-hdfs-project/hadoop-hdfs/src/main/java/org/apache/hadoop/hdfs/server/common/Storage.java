@@ -93,14 +93,14 @@ public abstract class Storage extends StorageInfo {
   /** Layout versions of 0.20.203 release */
   public static final int[] LAYOUT_VERSIONS_203 = {-19, -31};
 
-  public    static final String STORAGE_FILE_LOCK     = "in_use.lock";
-  public    static final String STORAGE_DIR_CURRENT   = "current";
-  public    static final String STORAGE_DIR_PREVIOUS  = "previous";
-  public    static final String STORAGE_TMP_REMOVED   = "removed.tmp";
-  public    static final String STORAGE_TMP_PREVIOUS  = "previous.tmp";
-  public    static final String STORAGE_TMP_FINALIZED = "finalized.tmp";
-  public    static final String STORAGE_TMP_LAST_CKPT = "lastcheckpoint.tmp";
-  public    static final String STORAGE_PREVIOUS_CKPT = "previous.checkpoint";
+  public    static final String STORAGE_FILE_LOCK     = "in_use.lock"; // 用于加锁
+  public    static final String STORAGE_DIR_CURRENT   = "current";  // 当前的文件系统结构
+  public    static final String STORAGE_DIR_PREVIOUS  = "previous";  // 先前的文件系统结构，以备回滚
+  public    static final String STORAGE_TMP_REMOVED   = "removed.tmp";  // 记载着已经删除的文件和目录
+  public    static final String STORAGE_TMP_PREVIOUS  = "previous.tmp";  // 记载着先前的文件和目录
+  public    static final String STORAGE_TMP_FINALIZED = "finalized.tmp";  // 记载着已经封存的文件和目录
+  public    static final String STORAGE_TMP_LAST_CKPT = "lastcheckpoint.tmp";  // 最近一个checkpoint
+  public    static final String STORAGE_PREVIOUS_CKPT = "previous.checkpoint"; // 前一个checkpoint
   
   /**
    * The blocksBeingWritten directory which was used in some 1.x and earlier
@@ -108,7 +108,7 @@ public abstract class Storage extends StorageInfo {
    */
   public static final String STORAGE_1_BBW = "blocksBeingWritten";
   
-  public enum StorageState {
+  public enum StorageState {  // 文件状态
     NON_EXISTENT,
     NOT_FORMATTED,
     COMPLETE_UPGRADE,
@@ -271,6 +271,7 @@ public abstract class Storage extends StorageInfo {
   
   /**
    * One of the storage directories.
+   * 用作存储设备的宿主系统目录
    */
   @InterfaceAudience.Private
   public static class StorageDirectory implements FormatConfirmable {

@@ -948,8 +948,8 @@ public abstract class FSEditLogOp {
     }
   }
   
-  static class AddBlockOp extends FSEditLogOp {
-    private String path;
+  static class AddBlockOp extends FSEditLogOp { //这是对OP_ADD_BLOCK的操作记录
+    private String path;  // 增加了path等三项信息
     private Block penultimateBlock;
     private Block lastBlock;
     
@@ -2033,8 +2033,8 @@ public abstract class FSEditLogOp {
   }
 
   /** {@literal @Idempotent} for {@link ClientProtocol#setOwner} */
-  static class SetOwnerOp extends FSEditLogOp {
-    String src;
+  static class SetOwnerOp extends FSEditLogOp {  //这个是对OP_SET_OWNER的操作记录
+    String src; // 增加了src，username等三项信息
     String username;
     String groupname;
 

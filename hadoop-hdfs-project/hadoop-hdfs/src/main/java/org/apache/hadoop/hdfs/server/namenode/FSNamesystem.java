@@ -770,8 +770,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         FSNamesystem.getNamespaceEditsDirs(conf));
     FSNamesystem namesystem = new FSNamesystem(conf, fsImage, false);
     StartupOption startOpt = NameNode.getStartupOption(conf);
-    if (startOpt == StartupOption.RECOVER) {
-      namesystem.setSafeMode(SafeModeAction.SAFEMODE_ENTER);
+    if (startOpt == StartupOption.RECOVER) { // 如果命令行中给定了recover选项
+      namesystem.setSafeMode(SafeModeAction.SAFEMODE_ENTER); // 恢复须在安全模式下进行
     }
 
     long loadStart = monotonicNow();
@@ -1189,7 +1189,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     // format before starting up if requested
     // startOpt是命令行中的启动选项，
     // 如果要求格式化，就先格式化
-    if (startOpt == StartupOption.FORMAT) {
+    if (startOpt == StartupOption.FORMAT) { // 如果命令行中给定了format选项
       // reuse current id
       fsImage.format(this, fsImage.getStorage().determineClusterId(), false);
       // 然后按照正常状态处理
@@ -1204,8 +1204,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       // 从宿主机文件系统读入映像文件和EditLog，加以合并处理
       final boolean staleImage
           = fsImage.recoverTransitionRead(startOpt, this, recovery);
-      if (RollingUpgradeStartupOption.ROLLBACK.matches(startOpt)) {
-        rollingUpgradeInfo = null;
+      if (RollingUpgradeStartupOption.ROLLBACK.matches(startOpt)) {  // 如果命令行中给定了回滚或讲解选项
+        rollingUpgradeInfo = null; // 既然是RollBack，当然就不会有RollingUpgrade
       }
       final boolean needToSave = staleImage && !haEnabled && !isRollingUpgrade(); 
       LOG.info("Need to save fs image? " + needToSave
@@ -1213,7 +1213,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           + ", isRollingUpgrade=" + isRollingUpgrade() + ")");
       if (needToSave) { // 如果需要的话，就将合并后的映像写回
         fsImage.saveNamespace(this);
-      } else {
+      } else { // 无需保存
         // No need to save, so mark the phase done.
         StartupProgress prog = NameNode.getStartupProgress();
         prog.beginPhase(Phase.SAVING_CHECKPOINT);
@@ -1223,7 +1223,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       // we shouldn't do it when coming up in standby state
       if (!haEnabled || (haEnabled && startOpt == StartupOption.UPGRADE)
           || (haEnabled && startOpt == StartupOption.UPGRADEONLY)) {
-        fsImage.openEditLogForWrite(getEffectiveLayoutVersion());  // 老的Editlog已经不需要了，准备写新的EditLog
+        fsImage.openEditLogForWrite(getEffectiveLayoutVersion());  // 老的Editlog已经不需要了，准备写新的EditLog，打开日志准备写入
       }
       success = true;
     } finally {
@@ -1655,7 +1655,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     // the entries.
     LinkedHashSet<URI> editsDirs = new LinkedHashSet<URI>();
     
-    if (includeShared) {
+    if (includeShared) {  // 如果可包括共享目录，就把共享目录也收集进来。
       List<URI> sharedDirs = getSharedEditsDirs(conf);
   
       // Fail until multiple shared edits directories are supported (HDFS-2782)
@@ -1677,18 +1677,18 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     }    
     // Now add the non-shared dirs.
     for (URI dir : getStorageDirs(conf, DFS_NAMENODE_EDITS_DIR_KEY)) {
-      if (!editsDirs.add(dir)) {
+      if (!editsDirs.add(dir)) { // 把配置文件中对dfs.namenode.edits.dir的设置收集起来
         LOG.warn("Edits URI " + dir + " listed multiple times in " + 
             DFS_NAMENODE_SHARED_EDITS_DIR_KEY + " and " +
             DFS_NAMENODE_EDITS_DIR_KEY + ". Ignoring duplicates.");
       }
     }
 
-    if (editsDirs.isEmpty()) {
+    if (editsDirs.isEmpty()) { // 如果均无配置，就共享IMAGE目录
       // If this is the case, no edit dirs have been explicitly configured.
       // Image dirs are to be used for edits too.
       return Lists.newArrayList(getNamespaceDirs(conf));
-    } else {
+    } else { // 如有配置就按配置
       return Lists.newArrayList(editsDirs);
     }
   }
@@ -2058,7 +2058,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       logAuditEvent(false, operationName, src);
       throw e;
     }
-    getEditLog().logSync();
+    getEditLog().logSync(); // 同步日志记录，要求将日志写入持久化存储介质，如磁盘
     logAuditEvent(true, operationName, src, null, auditStat);
   }
 

@@ -85,7 +85,7 @@ public interface HdfsServerConstants {
   enum NodeType {
     NAME_NODE,
     DATA_NODE,
-    JOURNAL_NODE
+    JOURNAL_NODE // 专门记录运行日志的节点JournalNode
   }
 
   /** Startup options for rolling upgrade. */

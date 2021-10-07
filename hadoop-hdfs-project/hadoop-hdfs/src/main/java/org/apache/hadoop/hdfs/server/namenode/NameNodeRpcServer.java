@@ -1297,17 +1297,17 @@ public class NameNodeRpcServer implements NamenodeProtocols {
 
   @Override // ClientProtocol
   public boolean saveNamespace(long timeWindow, long txGap) throws IOException {
-    checkNNStartup();
-    CacheEntry cacheEntry = RetryCache.waitForCompletion(retryCache);
-    if (cacheEntry != null && cacheEntry.isSuccess()) {
+    checkNNStartup(); // 检查NameNode节点是否启动
+    CacheEntry cacheEntry = RetryCache.waitForCompletion(retryCache); // 如果此前已在做这个事，就等待其结果
+    if (cacheEntry != null && cacheEntry.isSuccess()) { // 此前已在做这个事，并且成功，就不用再做一遍了。
       return true; // Return previous response
     }
     boolean success = false;
     try {
-      namesystem.saveNamespace(timeWindow, txGap);
+      namesystem.saveNamespace(timeWindow, txGap); // FSNamesystem.saveNamespace方法
       success = true;
     } finally {
-      RetryCache.setState(cacheEntry, success);
+      RetryCache.setState(cacheEntry, success); // 操作成功。
     }
     return true;
   }

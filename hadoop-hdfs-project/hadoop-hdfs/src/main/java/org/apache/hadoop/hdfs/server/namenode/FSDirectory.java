@@ -150,14 +150,15 @@ public class FSDirectory implements Closeable {
         .isdir(true)
         .build();
 
-  INodeDirectory rootDir;
-  private final FSNamesystem namesystem;
+  INodeDirectory rootDir; // 根目录，即整个文件系统的根节点
+  private final FSNamesystem namesystem; // 说明本目录属于哪一个FSNamesystem
   private volatile boolean skipQuotaCheck = false; //skip while consuming edits
   private final int maxComponentLength;
   private final int maxDirItems;
   private final int lsLimit;  // max list limit
   private final int contentCountLimit; // max content summary counts per run
   private final long contentSleepMicroSec;
+  // 本目录中所有INode的集合，用于快速寻找INode
   private final INodeMap inodeMap; // Synchronized by dirLock
   private long yieldCount = 0; // keep track of lock yield count.
   private int quotaInitThreads;
@@ -1145,6 +1146,7 @@ public class FSDirectory implements Closeable {
    * @return a new INodesInPath instance containing the new child INode. Null
    * if the adding fails.
    * @throws QuotaExceededException is thrown if it violates quota limit
+   *
    */
   INodesInPath addINode(INodesInPath existing, INode child,
                         FsPermission modes)
@@ -1439,6 +1441,7 @@ public class FSDirectory implements Closeable {
 
   /**
    * This method is always called with writeLock of FSDirectory held.
+   * 把一个新的节点加入INode集合INodeMap中
    */
   public final void addToInodeMap(INode inode) {
     if (inode instanceof INodeWithAdditionalFields) {
@@ -1522,6 +1525,7 @@ public class FSDirectory implements Closeable {
    * Get the inode from inodeMap based on its inode id.
    * @param id The given id
    * @return The inode associated with the given id
+   * 给定路径名，从目录树中查找一个文件或子目录的INode
    */
   public INode getInode(long id) {
     return inodeMap.get(id);

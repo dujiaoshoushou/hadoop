@@ -813,15 +813,15 @@ public class DFSAdmin extends FsShell {
       final long checkpointPeriod = dfsConf.getTimeDuration(
           DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_PERIOD_KEY,
           DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_PERIOD_DEFAULT,
-          TimeUnit.SECONDS);
+          TimeUnit.SECONDS);  // 60 分钟 3600秒
       final long checkpointTxnCount = dfsConf.getLong(
           DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_TXNS_KEY,
-          DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_TXNS_DEFAULT);
+          DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_TXNS_DEFAULT); // 1000000
       final int toleratePeriodNum = dfsConf.getInt(
           DFSConfigKeys.DFS_NAMENODE_MISSING_CHECKPOINT_PERIODS_BEFORE_SHUTDOWN_KEY,
-          DFSConfigKeys.DFS_NAMENODE_MISSING_CHECKPOINT_PERIODS_BEFORE_SHUTDOWN_DEFAULT);
-      timeWindow = checkpointPeriod * toleratePeriodNum;
-      txGap = checkpointTxnCount * toleratePeriodNum;
+          DFSConfigKeys.DFS_NAMENODE_MISSING_CHECKPOINT_PERIODS_BEFORE_SHUTDOWN_DEFAULT); //  3
+      timeWindow = checkpointPeriod * toleratePeriodNum; // 10800
+      txGap = checkpointTxnCount * toleratePeriodNum; // 3000000
       System.out.println("Do checkpoint if necessary before stopping " +
           "namenode. The time window is " + timeWindow + " seconds, and the " +
           "transaction gap is " + txGap);

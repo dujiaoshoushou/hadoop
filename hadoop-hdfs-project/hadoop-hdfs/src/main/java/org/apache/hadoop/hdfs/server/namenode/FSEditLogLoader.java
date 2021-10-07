@@ -180,7 +180,7 @@ public class FSEditLogLoader {
             LogThrottlingHelper.getLogSupressionMessage(preLogAction));
       }
       long numEdits = loadEditRecords(edits, false, expectedStartingTxId,
-          maxTxnsToRead, startOpt, recovery);
+          maxTxnsToRead, startOpt, recovery); // 装载EditLog文件日志记录
       long endTime = timer.monotonicNow();
       LogAction postLogAction = loadEditsLogHelper.record("post", endTime,
           numEdits, edits.length(), endTime - startTime);
@@ -240,8 +240,8 @@ public class FSEditLogLoader {
         try {
           FSEditLogOp op;
           try {
-            op = in.readOp();
-            if (op == null) {
+            op = in.readOp(); // 读入一个FSEditLogOp.即一条日志记录。
+            if (op == null) { // 没有了就跳出循环
               break;
             }
           } catch (Throwable e) {
@@ -285,7 +285,7 @@ public class FSEditLogLoader {
                   + ", numEdits=" + numEdits + ", totalEdits=" + totalEdits);
             }
             long inodeId = applyEditLogOp(op, fsDir, startOpt,
-                in.getVersion(true), lastInodeId);
+                in.getVersion(true), lastInodeId); // 将一条EditLog记录重演在FSImage上，这里是重点
             if (lastInodeId < inodeId) {
               lastInodeId = inodeId;
             }

@@ -89,11 +89,11 @@ public class FSDirAttrOp {
               "User " + pc.getUser() + " does not belong to " + group);
         }
       }
-      unprotectedSetOwner(fsd, iip, username, group);
+      unprotectedSetOwner(fsd, iip, username, group); // 实际的操作由这个函数完成
     } finally {
       fsd.writeUnlock();
     }
-    fsd.getEditLog().logSetOwner(iip.getPath(), username, group);
+    fsd.getEditLog().logSetOwner(iip.getPath(), username, group); // 记录对于文件系统的此项更改
     return fsd.getAuditFileInfo(iip);
   }
 

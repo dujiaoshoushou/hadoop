@@ -106,9 +106,9 @@ public class NNStorage extends Storage implements Closeable,
   @VisibleForTesting
   public enum NameNodeDirType implements StorageDirType {
     UNDEFINED,
-    IMAGE,
-    EDITS,
-    IMAGE_AND_EDITS;
+    IMAGE, // 用于存放image文件
+    EDITS,  // 用于存放EditLog文件
+    IMAGE_AND_EDITS; // 即可用于存放Image文件，也可用于存放EditLog文件
 
     @Override
     public StorageDirType getStorageDirType() {
