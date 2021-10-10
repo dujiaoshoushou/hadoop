@@ -87,6 +87,7 @@ class BPOfferService {
    * The list of all actors for namenodes in this nameservice, regardless
    * of their active or standby states.
    */
+  // 这个联络组中对于每个NameNode都有个联络员
   private final List<BPServiceActor> bpServices =
     new CopyOnWriteArrayList<BPServiceActor>();
 

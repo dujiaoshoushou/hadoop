@@ -44,11 +44,14 @@ import org.slf4j.Logger;
 @InterfaceAudience.Private
 class BlockPoolManager {
   private static final Logger LOG = DataNode.LOG;
-  
+
+  // 按NameserviceId查找
   private final Map<String, BPOfferService> bpByNameserviceId =
     Maps.newHashMap();
+  // 按BlockPoolId查找
   private final Map<String, BPOfferService> bpByBlockPoolId =
     Maps.newHashMap();
+  // 对于每个Nameservice都有个联络组
   private final List<BPOfferService> offerServices =
       new CopyOnWriteArrayList<>();
 

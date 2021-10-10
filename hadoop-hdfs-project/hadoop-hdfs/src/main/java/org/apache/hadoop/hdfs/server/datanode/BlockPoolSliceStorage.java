@@ -96,7 +96,7 @@ public class BlockPoolSliceStorage extends Storage {
   private static final Pattern BLOCK_POOL_TRASH_PATH_PATTERN = Pattern.compile(
       "^(.*)(" + BLOCK_POOL_ID_PATTERN_BASE + ")(" + TRASH_ROOT_DIR + ")(.*)$");
 
-  private String blockpoolID = ""; // id of the blockpool
+  private String blockpoolID = ""; // id of the blockpool 表示本片属于哪一个BlockPool
   private Daemon trashCleaner;
 
   public BlockPoolSliceStorage(StorageInfo storageInfo, String bpid) {

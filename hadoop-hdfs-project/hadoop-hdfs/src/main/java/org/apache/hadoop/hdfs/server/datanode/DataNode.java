@@ -326,21 +326,21 @@ public class DataNode extends ReconfigurableBase
   volatile boolean shouldRun = true;
   volatile boolean shutdownForUpgrade = false;
   private boolean shutdownInProgress = false;
-  private BlockPoolManager blockPoolManager;
-  volatile FsDatasetSpi<? extends FsVolumeSpi> data = null;
+  private BlockPoolManager blockPoolManager; // 同一文件卷的块属于相同BlockPool
+  volatile FsDatasetSpi<? extends FsVolumeSpi> data = null; // 数据块的集合，实际上是个FsVolumeImpl
   private String clusterId = null;
 
   final AtomicInteger xmitsInProgress = new AtomicInteger();
-  Daemon dataXceiverServer = null;
+  Daemon dataXceiverServer = null; // 数据收发线程，通过局域网收发数据
   DataXceiverServer xserver = null;
-  Daemon localDataXceiverServer = null;
+  Daemon localDataXceiverServer = null; // 通过Unix域socket上本节点上收发数据的线程
   ShortCircuitRegistry shortCircuitRegistry = null;
-  ThreadGroup threadGroup = null;
+  ThreadGroup threadGroup = null; // 一组dataXceiverServer线程
   private DNConf dnConf;
   private volatile boolean heartbeatsDisabledForTests = false;
   private volatile boolean ibrDisabledForTests = false;
   private volatile boolean cacheReportsDisabledForTests = false;
-  private DataStorage storage = null;
+  private DataStorage storage = null; // 代表着数据块的存储空间
 
   private DatanodeHttpServer httpServer = null;
   private int infoPort;
@@ -363,20 +363,20 @@ public class DataNode extends ReconfigurableBase
   BlockPoolTokenSecretManager blockPoolTokenSecretManager;
   private boolean hasAnyBlockPoolRegistered = false;
   
-  private  BlockScanner blockScanner;
-  private DirectoryScanner directoryScanner = null;
+  private  BlockScanner blockScanner; // 数据块扫描线程
+  private DirectoryScanner directoryScanner = null; // 目录扫描线程
   
   /** Activated plug-ins. */
   private List<ServicePlugin> plugins;
   
   // For InterDataNodeProtocol
-  public RPC.Server ipcServer;
+  public RPC.Server ipcServer; // 提供RPC服务
 
-  private JvmPauseMonitor pauseMonitor;
+  private JvmPauseMonitor pauseMonitor; // 监视JVM的运行是否停滞
 
   private SecureResources secureResources = null;
   // dataDirs must be accessed while holding the DataNode lock.
-  private List<StorageLocation> dataDirs;
+  private List<StorageLocation> dataDirs; // 本地宿主文件系统中用于HDFS块存储的目录
   private final String confVersion;
   private final long maxNumberOfBlocksToLog;
   private final boolean pipelineSupportECN;
@@ -460,7 +460,7 @@ public class DataNode extends ReconfigurableBase
     this.tracerConfigurationManager =
         new TracerConfigurationManager(DATANODE_HTRACE_PREFIX, conf);
     this.fileIoProvider = new FileIoProvider(conf, this);
-    this.blockScanner = new BlockScanner(this);
+    this.blockScanner = new BlockScanner(this); //
     this.lastDiskErrorCheck = 0;
     this.maxNumberOfBlocksToLog = conf.getLong(DFS_MAX_NUM_BLOCKS_TO_LOG_KEY,
         DFS_MAX_NUM_BLOCKS_TO_LOG_DEFAULT);
@@ -1097,6 +1097,7 @@ public class DataNode extends ReconfigurableBase
 
   /**
    * See {@link DirectoryScanner}
+   * 初始化目录扫描线程
    */
   private synchronized void initDirectoryScanner(Configuration conf) {
     if (directoryScanner != null) {
@@ -1110,7 +1111,7 @@ public class DataNode extends ReconfigurableBase
       reason = "verifcation is not supported by SimulatedFSDataset";
     } 
     if (reason == null) {
-      directoryScanner = new DirectoryScanner(data, conf);
+      directoryScanner = new DirectoryScanner(data, conf); // 创建目录扫描线程
       directoryScanner.start();
     } else {
       LOG.info("Periodic Directory Tree Verification scan " +
@@ -1170,7 +1171,7 @@ public class DataNode extends ReconfigurableBase
     streamingAddr = tcpPeerServer.getStreamingAddr();
     LOG.info("Opened streaming server at {}", streamingAddr);
     this.threadGroup = new ThreadGroup("dataXceiverServer");
-    xserver = new DataXceiverServer(tcpPeerServer, getConf(), this);
+    xserver = new DataXceiverServer(tcpPeerServer, getConf(), this); // 创建数据收发线程
     this.dataXceiverServer = new Daemon(threadGroup, xserver);
     this.threadGroup.setDaemon(true); // auto destroy when empty
 
@@ -1185,7 +1186,7 @@ public class DataNode extends ReconfigurableBase
                 getDomainPeerServer(getConf(), streamingAddr.getPort());
       if (domainPeerServer != null) {
         this.localDataXceiverServer = new Daemon(threadGroup,
-            new DataXceiverServer(domainPeerServer, getConf(), this));
+            new DataXceiverServer(domainPeerServer, getConf(), this)); // 创建本地数据收发线程
         LOG.info("Listening on UNIX domain socket: {}",
             domainPeerServer.getBindPath());
       }
@@ -1433,13 +1434,13 @@ public class DataNode extends ReconfigurableBase
           + "to the number of configured volumes (" + volsConfigured + ").");
     }
 
-    storage = new DataStorage();
+    storage = new DataStorage(); // 创建数据存储
     
     // global DN settings
     registerMXBean();
-    initDataXceiver();
-    startInfoServer();
-    pauseMonitor = new JvmPauseMonitor();
+    initDataXceiver(); // 创建跨节点数据收发线程和本地数据收发线程
+    startInfoServer(); // 创建并启动web服务器HttpServer
+    pauseMonitor = new JvmPauseMonitor(); // 创建JVM监视线程
     pauseMonitor.init(getConf());
     pauseMonitor.start();
   
@@ -1450,7 +1451,7 @@ public class DataNode extends ReconfigurableBase
     dnUserName = UserGroupInformation.getCurrentUser().getUserName();
     LOG.info("dnUserName = {}", dnUserName);
     LOG.info("supergroup = {}", supergroup);
-    initIpcServer();
+    initIpcServer(); // 创建节点间通信底层的服务端
 
     metrics = DataNodeMetrics.create(getConf(), getDisplayName());
     peerMetrics = dnConf.peerStatsEnabled ?
@@ -1460,8 +1461,8 @@ public class DataNode extends ReconfigurableBase
     ecWorker = new ErasureCodingWorker(getConf(), this);
     blockRecoveryWorker = new BlockRecoveryWorker(this);
 
-    blockPoolManager = new BlockPoolManager(this);
-    blockPoolManager.refreshNamenodes(getConf());
+    blockPoolManager = new BlockPoolManager(this); // 创建BlockPoolManager
+    blockPoolManager.refreshNamenodes(getConf()); // 建立与NameNode的联系
 
     // Create the ReadaheadPool from the DataNode context so we can
     // exit without having to explicitly shutdown its thread pool.
@@ -1574,6 +1575,7 @@ public class DataNode extends ReconfigurableBase
   /**
    * Create a DatanodeRegistration for a specific block pool.
    * @param nsInfo the namespace info from the first part of the NN handshake
+   * 由BPOfferService加以调用
    */
   DatanodeRegistration createBPRegistration(NamespaceInfo nsInfo) {
     StorageInfo storageInfo = storage.getBPStorage(nsInfo.getBlockPoolID());
@@ -1684,9 +1686,10 @@ public class DataNode extends ReconfigurableBase
    * 
    * @param bpos Block pool offer service
    * @throws IOException if the NN is inconsistent with the local storage.
+   * 由BPOfferService在与NameNode建立联系后调用
    */
   void initBlockPool(BPOfferService bpos) throws IOException {
-    NamespaceInfo nsInfo = bpos.getNamespaceInfo();
+    NamespaceInfo nsInfo = bpos.getNamespaceInfo(); // 获取block pool 的目录元空间
     if (nsInfo == null) {
       throw new IOException("NamespaceInfo not found: Block pool " + bpos
           + " should have retrieved namespace info before initBlockPool.");
@@ -1695,10 +1698,12 @@ public class DataNode extends ReconfigurableBase
     setClusterId(nsInfo.clusterID, nsInfo.getBlockPoolID());
 
     // Register the new block pool with the BP manager.
-    blockPoolManager.addBlockPool(bpos);
-    
+    blockPoolManager.addBlockPool(bpos); // 注册新的block pool 到blockPoolManager
+
     // In the case that this is the first block pool to connect, initialize
     // the dataset, block scanners, etc.
+    //  如果这是要连接的第一个块池，则初始化
+    //  数据集、块扫描器等。
     initStorage(nsInfo);
 
     try {
@@ -1777,7 +1782,7 @@ public class DataNode extends ReconfigurableBase
 
     synchronized(this)  {
       if (data == null) {
-        data = factory.newInstance(this, storage, getConf());
+        data = factory.newInstance(this, storage, getConf()); // 创建数据块集合FsDatasetImpl
       }
     }
   }
@@ -1860,6 +1865,7 @@ public class DataNode extends ReconfigurableBase
 
   /**
    * Connect to the NN. This is separated out for easier testing.
+   * 由具体BPServiceActor加以调用
    */
   DatanodeProtocolClientSideTranslatorPB connectToNN(
       InetSocketAddress nnAddr) throws IOException {
@@ -2495,6 +2501,7 @@ public class DataNode extends ReconfigurableBase
   /**
    * Used for transferring a block of data.  This class
    * sends a piece of data to another DataNode.
+   * 不同DataNode之间的数据库传输线程
    */
   private class DataTransfer implements Runnable {
     final DatanodeInfo[] targets;
@@ -2696,15 +2703,15 @@ public class DataNode extends ReconfigurableBase
    *  If this thread is specifically interrupted, it will stop waiting.
    */
   public void runDatanodeDaemon() throws IOException {
-    blockPoolManager.startAll();
+    blockPoolManager.startAll(); // 启动BlockPoolManager
 
     // start dataXceiveServer
-    dataXceiverServer.start();
+    dataXceiverServer.start(); // 启动数据收发线程
     if (localDataXceiverServer != null) {
-      localDataXceiverServer.start();
+      localDataXceiverServer.start(); // 启动本地数据收发线程
     }
     ipcServer.setTracer(tracer);
-    ipcServer.start();
+    ipcServer.start(); // 启动ipc服务线程
     startPlugins(getConf());
   }
 
@@ -2747,7 +2754,8 @@ public class DataNode extends ReconfigurableBase
       printUsage(System.err);
       return null;
     }
-    Collection<StorageLocation> dataLocations = getStorageLocations(conf);
+    Collection<StorageLocation> dataLocations = getStorageLocations(conf); // 在配置文件hdfs-default.xml中寻找用于数据库文件存储的"dfs.datanode.data.dir"
+    // 一般是dfs/data,也可以不止一处
     UserGroupInformation.setConfiguration(conf);
     SecurityUtil.login(conf, DFS_DATANODE_KEYTAB_FILE_KEY,
         DFS_DATANODE_KERBEROS_PRINCIPAL_KEY, getHostName(conf));

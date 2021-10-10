@@ -197,10 +197,10 @@ class RamDiskAsyncLazyPersistService {
     }
 
     ReplicaLazyPersistTask lazyPersistTask = new ReplicaLazyPersistTask(
-        bpId, blockId, genStamp, creationTime, replica, target);
+        bpId, blockId, genStamp, creationTime, replica, target); // 创建一个runnable
 
     FsVolumeImpl volume = (FsVolumeImpl)target.getVolume();
-    execute(volume.getStorageID(), lazyPersistTask);
+    execute(volume.getStorageID(), lazyPersistTask); // 安排一个线程加以执行
   }
 
   class ReplicaLazyPersistTask implements Runnable {
@@ -242,7 +242,7 @@ class RamDiskAsyncLazyPersistService {
 
         FsVolumeImpl volume = (FsVolumeImpl)ref.getVolume();
         File[] targetFiles = volume.copyBlockToLazyPersistLocation(bpId,
-            blockId, genStamp, replicaInfo, smallBufferSize, conf);
+            blockId, genStamp, replicaInfo, smallBufferSize, conf);  // 拷贝这个
 
         // Lock FsDataSetImpl during onCompleteLazyPersist callback
         dataset.onCompleteLazyPersist(bpId, blockId,

@@ -268,6 +268,7 @@ public class FsDatasetCache {
 
   /**
    * Attempt to begin caching a block.
+   * 为一数据块建立缓存
    */
   synchronized void cacheBlock(long blockId, String bpid,
       String blockFileName, long length, long genstamp,
@@ -288,6 +289,11 @@ public class FsDatasetCache {
         bpid);
   }
 
+  /**
+   * 去除一个数据块的缓存
+   * @param bpid
+   * @param blockId
+   */
   synchronized void uncacheBlock(String bpid, long blockId) {
     ExtendedBlockId key = new ExtendedBlockId(blockId, bpid);
     Value prevValue = mappableBlockMap.get(key);
@@ -391,6 +397,7 @@ public class FsDatasetCache {
 
   /**
    * Background worker that mmaps, mlocks, and checksums a block
+   * 线程，负责建立数据块缓存
    */
   private class CachingTask implements Runnable {
     private final ExtendedBlockId key; 
@@ -491,7 +498,7 @@ public class FsDatasetCache {
       }
     }
   }
-
+  // 线程，负责去除数据块缓存
   private class UncachingTask implements Runnable {
     private final ExtendedBlockId key; 
     private final long revocationTimeMs;

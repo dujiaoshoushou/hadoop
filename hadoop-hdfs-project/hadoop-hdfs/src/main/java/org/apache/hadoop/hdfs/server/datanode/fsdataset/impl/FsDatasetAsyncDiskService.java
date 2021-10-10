@@ -71,7 +71,7 @@ class FsDatasetAsyncDiskService {
   
   private final DataNode datanode;
   private final FsDatasetImpl fsdatasetImpl;
-  private final ThreadGroup threadGroup;
+  private final ThreadGroup threadGroup; // 用来运行SyncFileRange 和 ReplicaFileDeleteTask的线程池
   private Map<String, ThreadPoolExecutor> executors
       = new HashMap<String, ThreadPoolExecutor>();
   private Map<String, Set<Long>> deletedBlockIds 
@@ -122,6 +122,7 @@ class FsDatasetAsyncDiskService {
   /**
    * Starts AsyncDiskService for a new volume
    * @param volume the root of the new data volume.
+   *               增加一个文件卷，从而增加一个线程
    */
   synchronized void addVolume(FsVolumeImpl volume) {
     if (executors == null) {

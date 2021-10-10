@@ -63,11 +63,14 @@ public class RamDiskReplicaLruTracker extends RamDiskReplicaTracker {
   /**
    * Queue of replicas that need to be written to disk.
    * Stale entries are GC'd by dequeueNextReplicaToPersist.
+   * 需要写入磁盘的副本队列。
+   * 陈旧条目由 dequeueNextReplicaToPersist GC 处理。
    */
   Queue<RamDiskReplicaLru> replicasNotPersisted;
 
   /**
    * Map of persisted replicas ordered by their last use times.
+   * 按上次使用时间排序的持久副本映射
    */
   TreeMultimap<Long, RamDiskReplicaLru> replicasPersisted;
 
@@ -117,7 +120,7 @@ public class RamDiskReplicaLruTracker extends RamDiskReplicaTracker {
       final String bpid, final long blockId, FsVolumeImpl checkpointVolume) {
     Map<Long, RamDiskReplicaLru> map = replicaMaps.get(bpid);
     RamDiskReplicaLru ramDiskReplicaLru = map.get(blockId);
-    ramDiskReplicaLru.setLazyPersistVolume(checkpointVolume);
+    ramDiskReplicaLru.setLazyPersistVolume(checkpointVolume); // 设置目标文件卷
   }
 
   @Override
@@ -147,18 +150,18 @@ public class RamDiskReplicaLruTracker extends RamDiskReplicaTracker {
 
   @Override
   synchronized RamDiskReplicaLru dequeueNextReplicaToPersist() {
-    while (replicasNotPersisted.size() != 0) {
-      RamDiskReplicaLru ramDiskReplicaLru = replicasNotPersisted.remove();
+    while (replicasNotPersisted.size() != 0) {  // 循环至replicasNotPersisted.size()为0
+      RamDiskReplicaLru ramDiskReplicaLru = replicasNotPersisted.remove(); // replicasNotPersisted队列中是按LRU算法裁定应退出RAMDISK的复份
       Map<Long, RamDiskReplicaLru> replicaMap =
-          replicaMaps.get(ramDiskReplicaLru.getBlockPoolId());
+          replicaMaps.get(ramDiskReplicaLru.getBlockPoolId()); // 根据其bpid找到该BP的replicaMap
 
       if (replicaMap != null && replicaMap.get(ramDiskReplicaLru.getBlockId()) != null) {
-        return ramDiskReplicaLru;
+        return ramDiskReplicaLru; // 核查无误，这就是要转入二线的数据块复份，找到一个就返回，要不然就继续找下一个。
       }
 
       // The replica no longer exists, look for the next one.
     }
-    return null;
+    return null; // 没有就返回null
   }
 
   @Override

@@ -242,22 +242,22 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
     return info.getMetadataInputStream(0);
   }
     
-  final DataNode datanode;
-  final DataStorage dataStorage;
-  private final FsVolumeList volumes;
-  final Map<String, DatanodeStorage> storageMap;
-  final FsDatasetAsyncDiskService asyncDiskService;
-  final Daemon lazyWriter;
-  final FsDatasetCache cacheManager;
+  final DataNode datanode; // 在哪一个DataNode上
+  final DataStorage dataStorage; // 一个DataStorage，代表着节点上所有的数据块
+  private final FsVolumeList volumes; // FsVolumeImpl的List，节点上可以有多个文件卷
+  final Map<String, DatanodeStorage> storageMap; // 从StorageID到DatanodeStorage的MAP，DatanodeStorage反映一个DataNode上Storage的状态信息
+  final FsDatasetAsyncDiskService asyncDiskService; // 这是一个线程池，每个线程负责一个文件卷的异步磁盘操作
+  final Daemon lazyWriter; // LazWriter线程，将RamDisk的内容存盘称为一个checkpoint
+  final FsDatasetCache cacheManager; // 管理缓冲在内存中的数据块复份
   private final Configuration conf;
   private final int volFailuresTolerated;
   private final int volsConfigured;
   private volatile boolean fsRunning;
 
-  final ReplicaMap volumeMap;
+  final ReplicaMap volumeMap; // 用于数据块复份的管理
   final Map<String, Set<Long>> deletingBlock;
-  final RamDiskReplicaTracker ramDiskReplicaTracker;
-  final RamDiskAsyncLazyPersistService asyncLazyPersistService;
+  final RamDiskReplicaTracker ramDiskReplicaTracker; // 跟踪存储在RamDisk中的数据块复份
+  final RamDiskAsyncLazyPersistService asyncLazyPersistService; // 提供将RamDisk内存持久化存储的服务
 
   private static final int MAX_BLOCK_EVICTIONS_PER_ITERATION = 3;
 
@@ -3030,7 +3030,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
   public void onCompleteLazyPersist(String bpId, long blockId,
       long creationTime, File[] savedFiles, FsVolumeImpl targetVolume) {
     try (AutoCloseableLock lock = datasetWriteLock.acquire()) {
-      ramDiskReplicaTracker.recordEndLazyPersist(bpId, blockId, savedFiles);
+      ramDiskReplicaTracker.recordEndLazyPersist(bpId, blockId, savedFiles); // 与recordEndLazyPersist()相应，用于善后和统计
 
       targetVolume.incDfsUsedAndNumBlocks(bpId, savedFiles[0].length()
           + savedFiles[1].length());
@@ -3145,13 +3145,14 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
     public LazyWriter(Configuration conf) {
       this.checkpointerInterval = conf.getInt(
           DFSConfigKeys.DFS_DATANODE_LAZY_WRITER_INTERVAL_SEC,
-          DFSConfigKeys.DFS_DATANODE_LAZY_WRITER_INTERVAL_DEFAULT_SEC);
+          DFSConfigKeys.DFS_DATANODE_LAZY_WRITER_INTERVAL_DEFAULT_SEC); // 从配置文件中获取操作间隔默认是60秒
     }
 
     /**
      * Checkpoint a pending replica to persistent storage now.
      * If we fail then move the replica to the end of the queue.
      * @return true if there is more work to be done, false otherwise.
+     * 将内存中的复份包括其块文件和元文件拷贝到磁盘上。
      */
     private boolean saveNextReplica() {
       RamDiskReplica block = null;
@@ -3161,24 +3162,24 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
       boolean succeeded = false;
 
       try {
-        block = ramDiskReplicaTracker.dequeueNextReplicaToPersist();
-        if (block != null) {
+        block = ramDiskReplicaTracker.dequeueNextReplicaToPersist(); // 从RAMDiskReplicaTracker的队列中解下一个等待被持久存储的复份
+        if (block != null) { // 如果有的话
           try (AutoCloseableLock lock = datasetWriteLock.acquire()) {
-            replicaInfo = volumeMap.get(block.getBlockPoolId(), block.getBlockId());
+            replicaInfo = volumeMap.get(block.getBlockPoolId(), block.getBlockId()); // 从volumeMap中获取关于这个复份的更详细的信息。
 
             // If replicaInfo is null, the block was either deleted before
             // it could be checkpointed or it is already on persistent storage.
             // This can occur if a second replica on persistent storage was found
             // after the lazy write was scheduled.
             if (replicaInfo != null &&
-                replicaInfo.getVolume().isTransientStorage()) {
-              // Pick a target volume to persist the block.
+                replicaInfo.getVolume().isTransientStorage()) { // 确认这个复份是在过渡性存储介质（RAM_DIDSK)shang
+              // Pick a target volume to persist the block.找到一个可以容纳这个复份的文件卷
               targetReference = volumes.getNextVolume(
                   StorageType.DEFAULT, null, replicaInfo.getNumBytes());
               targetVolume = (FsVolumeImpl) targetReference.getVolume();
 
               ramDiskReplicaTracker.recordStartLazyPersist(
-                  block.getBlockPoolId(), block.getBlockId(), targetVolume);
+                  block.getBlockPoolId(), block.getBlockId(), targetVolume); // 开始着手该复份的久储操作
 
               if (LOG.isDebugEnabled()) {
                 LOG.debug("LazyWriter: Start persisting RamDisk block:"

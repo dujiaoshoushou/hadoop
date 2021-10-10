@@ -106,19 +106,19 @@ public class FsVolumeImpl implements FsVolumeSpi {
   private static final ObjectReader READER =
       new ObjectMapper().readerFor(BlockIteratorState.class);
 
-  private final FsDatasetImpl dataset;
-  private final String storageID;
-  private final StorageType storageType;
+  private final FsDatasetImpl dataset; // 数据块可能属于不同的文件卷
+  private final String storageID; // storageID 就是文件卷所在的storage的id
+  private final StorageType storageType; // 可以是 RAM_DISK(true),  SSD(false),  DISK(false),  ARCHIVE(false),  PROVIDED(false);
   private final Map<String, BlockPoolSlice> bpSlices
-      = new ConcurrentHashMap<String, BlockPoolSlice>();
+      = new ConcurrentHashMap<String, BlockPoolSlice>(); // 本文件卷上存储的所有BlockPoolSlice
 
   // Refers to the base StorageLocation used to construct this volume
   // (i.e., does not include STORAGE_DIR_CURRENT in
   // <location>/STORAGE_DIR_CURRENT/)
   private final StorageLocation storageLocation;
 
-  private final File currentDir;    // <StorageDirectory>/current
-  private final DF usage;
+  private final File currentDir;    // <StorageDirectory>/current current目录
+  private final DF usage; // 用于unix的df命令获取关于文件卷的统计信息
   private final ReservedSpaceCalculator reserved;
   private long cachedCapacity;
   private CloseableReferenceCount reference = new CloseableReferenceCount();
@@ -139,6 +139,7 @@ public class FsVolumeImpl implements FsVolumeSpi {
    * The maximum number of workers per volume is bounded (configurable via
    * dfs.datanode.fsdatasetcache.max.threads.per.volume) to limit resource
    * contention.
+   * 用于本地文件卷的CacheTask线程池
    */
   protected ThreadPoolExecutor cacheExecutor;
 
@@ -160,9 +161,9 @@ public class FsVolumeImpl implements FsVolumeSpi {
     this.storageID = storageID;
     this.reservedForReplicas = new AtomicLong(0L);
     this.storageLocation = sd.getStorageLocation();
-    this.currentDir = sd.getCurrentDir();
+    this.currentDir = sd.getCurrentDir(); // current目录的路径
     this.storageType = storageLocation.getStorageType();
-    this.configuredCapacity = -1;
+    this.configuredCapacity = -1; // 表示容量应该根据实际情况进行计算
     this.usage = usage;
     if (this.usage != null) {
       reserved = new ReservedSpaceCalculator.Builder(conf)
@@ -179,8 +180,8 @@ public class FsVolumeImpl implements FsVolumeSpi {
       cachedCapacity = -1;
     }
     if (currentDir != null) {
-      File parent = currentDir.getParentFile();
-      cacheExecutor = initializeCacheExecutor(parent);
+      File parent = currentDir.getParentFile(); // 获取文件卷挂载点的的路径
+      cacheExecutor = initializeCacheExecutor(parent); // 创建CachingTask线程池
       this.metrics = DataNodeVolumeMetrics.create(conf, parent.getPath());
     } else {
       cacheExecutor = null;
@@ -204,6 +205,7 @@ public class FsVolumeImpl implements FsVolumeSpi {
         DFSConfigKeys.DFS_DATANODE_FSDATASETCACHE_MAX_THREADS_PER_VOLUME_DEFAULT);
 
     String escapedPath = parent.toString().replaceAll("%", "%%");
+    //
     ThreadFactory workerFactory = new ThreadFactoryBuilder()
         .setDaemon(true)
         .setNameFormat("FsVolumeImplWorker-" + escapedPath + "-%d")
@@ -410,9 +412,9 @@ public class FsVolumeImpl implements FsVolumeSpi {
    */
   @VisibleForTesting
   public long getCapacity() {
-    if (configuredCapacity < 0L) {
+    if (configuredCapacity < 0L) { // 如果configuredCapacity<0,就根据实际情况加以计算
       long remaining;
-      if (cachedCapacity > 0L) {
+      if (cachedCapacity > 0L) { // 如果configuredCapacity>0,就采用设定的容量
         remaining = cachedCapacity - getReserved();
       } else {
         remaining = usage.getCapacity() - getReserved();
@@ -1041,15 +1043,22 @@ public class FsVolumeImpl implements FsVolumeSpi {
     addBlockPool(bpid, c, null);
   }
 
+  /**
+   * 在文件卷中添加一个BlockPoolSlice
+   * @param bpid
+   * @param c
+   * @param timer
+   * @throws IOException
+   */
   void addBlockPool(String bpid, Configuration c, Timer timer)
       throws IOException {
-    File bpdir = new File(currentDir, bpid);
+    File bpdir = new File(currentDir, bpid); // 在current目录下添加一个BP子目录
     BlockPoolSlice bp;
     if (timer == null) {
       timer = new Timer();
     }
-    bp = new BlockPoolSlice(bpid, this, bpdir, c, timer);
-    bpSlices.put(bpid, bp);
+    bp = new BlockPoolSlice(bpid, this, bpdir, c, timer); // 创建一个对象
+    bpSlices.put(bpid, bp); // 将BlockPoolSlince添加到bpSlices集合中
   }
 
   void shutdownBlockPool(String bpid, BlockListAsLongs blocksListsAsLongs) {
@@ -1473,14 +1482,14 @@ public class FsVolumeImpl implements FsVolumeSpi {
       int smallBufferSize,
       Configuration conf) throws IOException {
 
-    File lazyPersistDir  = getLazyPersistDir(bpId);
-    if (!lazyPersistDir.exists() && !lazyPersistDir.mkdirs()) {
+    File lazyPersistDir  = getLazyPersistDir(bpId); // 按bpid找到应去的目录
+    if (!lazyPersistDir.exists() && !lazyPersistDir.mkdirs()) { // 若不存在就创建，创建失败就发异常
       FsDatasetImpl.LOG.warn("LazyWriter failed to create " + lazyPersistDir);
       throw new IOException("LazyWriter fail to find or " +
           "create lazy persist dir: " + lazyPersistDir.toString());
     }
 
-    // No FsDatasetImpl lock for the file copy
+    // No FsDatasetImpl lock for the file copy。拷贝这个复份的数据文件和元数据文件
     File[] targetFiles = FsDatasetImpl.copyBlockFiles(
         blockId, genStamp, replicaInfo, lazyPersistDir, true,
         smallBufferSize, conf);

@@ -100,10 +100,12 @@ public class DataStorage extends Storage {
    *  is the same as the legacy StorageID for datanodes that were
    *  upgraded from a pre-UUID version. For compatibility with prior
    *  versions of Datanodes we cannot make this field a UUID.
+   *  在哪个DataNode上
    */
   private volatile String datanodeUuid = null;
   
   // Maps block pool IDs to block pool storage
+  // 一组BlockPoolSliceStorage
   private final Map<String, BlockPoolSliceStorage> bpStorageMap
       = Collections.synchronizedMap(new HashMap<String, BlockPoolSliceStorage>());
 
