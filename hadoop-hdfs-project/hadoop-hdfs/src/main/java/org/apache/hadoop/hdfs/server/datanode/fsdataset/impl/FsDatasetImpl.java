@@ -3129,7 +3129,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
         ExtendedBlockId.fromExtendedBlock(extendedBlock));
     datanode.notifyNamenodeReceivedBlock(
         extendedBlock, null, newReplicaInfo.getStorageUuid(),
-        newReplicaInfo.isOnTransientStorage());
+        newReplicaInfo.isOnTransientStorage()); // 通知nameNode
 
     // Remove the old replicas
     cleanupReplica(bpid, replicaInfo);
@@ -3217,8 +3217,8 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
       final long cacheCapacity = cacheManager.getMemCacheCapacity();
 
       while (iterations++ < MAX_BLOCK_EVICTIONS_PER_ITERATION &&
-             (cacheCapacity - cacheManager.getMemCacheUsed()) < bytesNeeded) {
-        RamDiskReplica replicaState = ramDiskReplicaTracker.getNextCandidateForEviction();
+             (cacheCapacity - cacheManager.getMemCacheUsed()) < bytesNeeded) { // 每次只做有限次循环，并且一旦RAMDISK的"水位"够高了就停止
+        RamDiskReplica replicaState = ramDiskReplicaTracker.getNextCandidateForEviction(); // 从RamDiskReplicaTracker的对列中解一下个可以被删除的复份
 
         if (replicaState == null) {
           break;
@@ -3236,7 +3236,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
                                        replicaState.getBlockId());
           Preconditions.checkState(replicaInfo.getVolume().isTransientStorage());
           ramDiskReplicaTracker.discardReplica(replicaState.getBlockPoolId(),
-              replicaState.getBlockId(), false);
+              replicaState.getBlockId(), false); // 从replicasPersisted队列汇总删除
 
           // Move the replica from lazyPersist/ to finalized/ on
           // the target volume
@@ -3244,7 +3244,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
               replicaState.getLazyPersistVolume().activateSavedReplica(bpid,
                   replicaInfo, replicaState);
           // Update the volumeMap entry.
-          volumeMap.add(bpid, newReplicaInfo);
+          volumeMap.add(bpid, newReplicaInfo); // 替换volumeMap中老的ReplicaInfo，以后这个复份就在磁盘上了
 
           // Update metrics
           datanode.getMetrics().incrRamDiskBlocksEvicted();

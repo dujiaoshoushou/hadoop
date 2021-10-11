@@ -36,7 +36,7 @@ import java.util.*;
 public class RamDiskReplicaLruTracker extends RamDiskReplicaTracker {
 
   private class RamDiskReplicaLru extends RamDiskReplica {
-    long lastUsedTime;
+    long lastUsedTime; // 比RamDiskReplica多了个最后使用时间，这是LRU算法的依据
 
     private RamDiskReplicaLru(String bpid, long blockId,
                               FsVolumeImpl ramDiskVolume,

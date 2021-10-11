@@ -157,7 +157,7 @@ class BlockPoolManager {
 
     try {
       newAddressMap =
-          DFSUtil.getNNServiceRpcAddressesForCluster(conf);
+          DFSUtil.getNNServiceRpcAddressesForCluster(conf); // 获取集群中各nameservice（可以不止一个）的地址
       newLifelineAddressMap =
           DFSUtil.getNNLifelineRpcAddressesForCluster(conf);
     } catch (IOException ioe) {
@@ -170,7 +170,7 @@ class BlockPoolManager {
     }
 
     synchronized (refreshNamenodesLock) {
-      doRefreshNamenodes(newAddressMap, newLifelineAddressMap);
+      doRefreshNamenodes(newAddressMap, newLifelineAddressMap); // 按名单中的nameservice地址逐一建立连接
     }
   }
   
@@ -230,7 +230,7 @@ class BlockPoolManager {
                 nnIdToLifelineAddr.get(nnId) : null);
           }
           BPOfferService bpos = createBPOS(nsToAdd, nnIds, addrs,
-              lifelineAddrs);
+              lifelineAddrs); // 创建一个BPOfferService
           bpByNameserviceId.put(nsToAdd, bpos);
           offerServices.add(bpos);
         }
@@ -302,6 +302,6 @@ class BlockPoolManager {
       List<InetSocketAddress> nnAddrs,
       List<InetSocketAddress> lifelineNnAddrs) {
     return new BPOfferService(nameserviceId, nnIds, nnAddrs, lifelineNnAddrs,
-        dn);
+        dn); // 对于集群中的每一个NameNode都要有个BPOS对象
   }
 }

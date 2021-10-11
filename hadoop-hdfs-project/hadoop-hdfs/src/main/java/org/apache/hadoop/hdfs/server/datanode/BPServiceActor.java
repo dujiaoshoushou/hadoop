@@ -850,7 +850,7 @@ class BPServiceActor implements Runnable {
         // init stuff
         try {
           // setup storage
-          connectToNNAndHandshake();
+          connectToNNAndHandshake(); // 连接到这个BPOS负责联络的NameNode
           break;
         } catch (IOException ioe) {
           // Initial handshake, storage recovery or registration failed

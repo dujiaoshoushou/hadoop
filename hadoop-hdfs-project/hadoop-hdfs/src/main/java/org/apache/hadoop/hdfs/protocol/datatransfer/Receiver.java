@@ -55,7 +55,7 @@ import org.apache.htrace.core.Tracer;
 @InterfaceStability.Evolving
 public abstract class Receiver implements DataTransferProtocol {
   private final Tracer tracer;
-  protected DataInputStream in;
+  protected DataInputStream in; // Receiver的输入流，这是Receiver下面的TCP传输层
 
   protected Receiver(Tracer tracer) {
     this.tracer = tracer;
@@ -66,7 +66,9 @@ public abstract class Receiver implements DataTransferProtocol {
     this.in = in;
   }
 
-  /** Read an Op.  It also checks protocol version. */
+  /** Read an Op.  It also checks protocol version.
+   * 从输入流里面读出操作码Op
+   * */
   protected final Op readOp() throws IOException {
     final short version = in.readShort();
     if (version != DataTransferProtocol.DATA_TRANSFER_VERSION) {
@@ -97,7 +99,9 @@ public abstract class Receiver implements DataTransferProtocol {
     return continueTraceSpan(header.getTraceInfo(), description);
   }
 
-  /** Process op by the corresponding method. */
+  /** Process op by the corresponding method.
+   * 执行Op所规定的操作，根据Op调用不同的方法
+   * */
   protected final void processOp(Op op) throws IOException {
     switch(op) {
     case READ_BLOCK:
@@ -143,7 +147,9 @@ public abstract class Receiver implements DataTransferProtocol {
     return new CachingStrategy(dropBehind, readahead);
   }
 
-  /** Receive OP_READ_BLOCK */
+  /** Receive OP_READ_BLOCK
+   * 从本节点读取一个数据块
+   * */
   private void opReadBlock() throws IOException {
     OpReadBlockProto proto = OpReadBlockProto.parseFrom(vintPrefixed(in));
     TraceScope traceScope = continueTraceSpan(proto.getHeader(),
@@ -163,7 +169,9 @@ public abstract class Receiver implements DataTransferProtocol {
     }
   }
   
-  /** Receive OP_WRITE_BLOCK */
+  /** Receive OP_WRITE_BLOCK
+   * 将一个数据块写入本节点以及流水线中的后续节点
+   * */
   private void opWriteBlock(DataInputStream in) throws IOException {
     final OpWriteBlockProto proto = OpWriteBlockProto.parseFrom(vintPrefixed(in));
     final DatanodeInfo[] targets = PBHelperClient.convert(proto.getTargetsList());
@@ -195,7 +203,9 @@ public abstract class Receiver implements DataTransferProtocol {
     }
   }
 
-  /** Receive {@link Op#TRANSFER_BLOCK} */
+  /** Receive {@link Op#TRANSFER_BLOCK}
+   * 将数据块复份发送到别的节点
+   * */
   private void opTransferBlock(DataInputStream in) throws IOException {
     final OpTransferBlockProto proto =
       OpTransferBlockProto.parseFrom(vintPrefixed(in));
@@ -265,7 +275,9 @@ public abstract class Receiver implements DataTransferProtocol {
     }
   }
 
-  /** Receive OP_REPLACE_BLOCK */
+  /** Receive OP_REPLACE_BLOCK
+   * 将复份换个地方，从一个节点换到另一个节点
+   * */
   private void opReplaceBlock(DataInputStream in) throws IOException {
     OpReplaceBlockProto proto = OpReplaceBlockProto.parseFrom(vintPrefixed(in));
     TraceScope traceScope = continueTraceSpan(proto.getHeader(),
@@ -282,7 +294,9 @@ public abstract class Receiver implements DataTransferProtocol {
     }
   }
 
-  /** Receive OP_COPY_BLOCK */
+  /** Receive OP_COPY_BLOCK
+   * 拷贝一个数据块的复份
+   * */
   private void opCopyBlock(DataInputStream in) throws IOException {
     OpCopyBlockProto proto = OpCopyBlockProto.parseFrom(vintPrefixed(in));
     TraceScope traceScope = continueTraceSpan(proto.getHeader(),
@@ -295,7 +309,9 @@ public abstract class Receiver implements DataTransferProtocol {
     }
   }
 
-  /** Receive OP_BLOCK_CHECKSUM */
+  /** Receive OP_BLOCK_CHECKSUM
+   * 对一个数据块复份进行校验和检查
+   * */
   private void opBlockChecksum(DataInputStream in) throws IOException {
     OpBlockChecksumProto proto = OpBlockChecksumProto.parseFrom(vintPrefixed(in));
     TraceScope traceScope = continueTraceSpan(proto.getHeader(),

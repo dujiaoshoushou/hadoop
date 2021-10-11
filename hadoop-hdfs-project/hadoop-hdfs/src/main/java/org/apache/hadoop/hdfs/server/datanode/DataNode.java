@@ -1105,7 +1105,7 @@ public class DataNode extends ReconfigurableBase
     }
     String reason = null;
     if (conf.getTimeDuration(DFS_DATANODE_DIRECTORYSCAN_INTERVAL_KEY,
-        DFS_DATANODE_DIRECTORYSCAN_INTERVAL_DEFAULT, TimeUnit.SECONDS) < 0) {
+        DFS_DATANODE_DIRECTORYSCAN_INTERVAL_DEFAULT, TimeUnit.SECONDS) < 0) { // 获取扫描间隔的设置，默认是6个小时
       reason = "verification is turned off by configuration";
     } else if ("SimulatedFSDataset".equals(data.getClass().getSimpleName())) {
       reason = "verifcation is not supported by SimulatedFSDataset";
@@ -1715,7 +1715,7 @@ public class DataNode extends ReconfigurableBase
     checkDiskError();
 
     blockScanner.enableBlockPoolId(bpos.getBlockPoolId());
-    initDirectoryScanner(getConf());
+    initDirectoryScanner(getConf()); // 目录扫描器
     initDiskBalancer(data, getConf());
   }
 

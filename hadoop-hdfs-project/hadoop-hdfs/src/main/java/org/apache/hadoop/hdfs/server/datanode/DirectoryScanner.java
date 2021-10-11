@@ -67,9 +67,9 @@ public class DirectoryScanner implements Runnable {
 
   private static final int DEFAULT_MAP_SIZE = 32768;
   private static final int RECONCILE_BLOCKS_BATCH_SIZE = 1000;
-  private final FsDatasetSpi<?> dataset;
-  private final ExecutorService reportCompileThreadPool;
-  private final ScheduledExecutorService masterThread;
+  private final FsDatasetSpi<?> dataset; // 实际就是个FsDatasetImpl对象
+  private final ExecutorService reportCompileThreadPool; // 用于编制报告的线程池
+  private final ScheduledExecutorService masterThread; // 定时调度的主线程，实际上就是DirectoryScanner
   private final long scanPeriodMsecs;
   private final long throttleLimitMsPerSec;
   private final AtomicBoolean shouldRun = new AtomicBoolean();
@@ -427,13 +427,13 @@ public class DirectoryScanner implements Runnable {
   @VisibleForTesting
   public void reconcile() throws IOException {
     LOG.debug("reconcile start DirectoryScanning");
-    scan();
+    scan(); // 先扫描，所得差异在diffs集合中
 
     // HDFS-14476: run checkAndUpadte with batch to avoid holding the lock too
     // long
     int loopCount = 0;
     synchronized (diffs) {
-      for (final Map.Entry<String, ScanInfo> entry : diffs.getEntries()) {
+      for (final Map.Entry<String, ScanInfo> entry : diffs.getEntries()) { // 对diffs集合中的每一个diff链
         dataset.checkAndUpdate(entry.getKey(), entry.getValue());
 
         if (loopCount % RECONCILE_BLOCKS_BATCH_SIZE == 0) {
@@ -602,7 +602,7 @@ public class DirectoryScanner implements Runnable {
     try (FsDatasetSpi.FsVolumeReferences volumes =
         dataset.getFsVolumeReferences()) {
 
-      for (final FsVolumeSpi volume : volumes) {
+      for (final FsVolumeSpi volume : volumes) {// 为每个文件卷创建一个ReportCompiler线程
         // Disable scanning PROVIDED volumes to keep overhead low
         if (volume.getStorageType() != StorageType.PROVIDED) {
           ReportCompiler reportCompiler = new ReportCompiler(volume);

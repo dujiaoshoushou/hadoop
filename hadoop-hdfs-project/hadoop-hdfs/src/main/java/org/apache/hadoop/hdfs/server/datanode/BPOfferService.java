@@ -52,6 +52,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * This class manages an instance of {@link BPServiceActor} for each NN,
  * and delegates calls to both NNs. 
  * It also maintains the state about which of the NNs is considered active.
+ * DN 上的每个块池/命名空间一个实例，用于处理该命名空间的活动和备用 NN 的心跳。
+ * * 此类为每个 NN 管理一个 {@link BPServiceActor} 实例，
+ * * 并将调用委托给两个 NN。
+ * * 它还维护关于哪些神经网络被认为是活跃的状态。
  */
 @InterfaceAudience.Private
 class BPOfferService {
@@ -137,7 +141,7 @@ class BPOfferService {
 
     for (int i = 0; i < nnAddrs.size(); ++i) {
       this.bpServices.add(new BPServiceActor(nameserviceId, nnIds.get(i),
-          nnAddrs.get(i), lifelineNnAddrs.get(i), this));
+          nnAddrs.get(i), lifelineNnAddrs.get(i), this)); // 为每个NameNode创建一个BPServiceActor线程负责联络
     }
   }
 
@@ -390,7 +394,7 @@ class BPOfferService {
         // The DN can now initialize its local storage if we are the
         // first BP to handshake, etc.
         try {
-          dn.initBlockPool(this);
+          dn.initBlockPool(this); // 属于这个NameNode的BlockPool，其实是BlockPoolSlice
           success = true;
         } finally {
           if (!success) {

@@ -106,18 +106,18 @@ class DataXceiver extends Receiver implements Runnable {
   public static final Logger LOG = DataNode.LOG;
   static final Log ClientTraceLog = DataNode.ClientTraceLog;
   
-  private Peer peer;
-  private final String remoteAddress; // address of remote side
+  private Peer peer; // 实现Peer界面的某类对象（如BasicInetPeer),代表着与对方的连接
+  private final String remoteAddress; // address of remote side，对方的地址
   private final String remoteAddressWithoutPort; // only the address, no port
-  private final String localAddress;  // local address of this daemon
-  private final DataNode datanode;
+  private final String localAddress;  // local address of this daemon 本地的地址
+  private final DataNode datanode; // 这个节点DataNode对象
   private final DNConf dnConf;
-  private final DataXceiverServer dataXceiverServer;
+  private final DataXceiverServer dataXceiverServer; // 服务线程
   private final boolean connectToDnViaHostname;
   private long opStartTime; //the start time of receiving an Op
-  private final InputStream socketIn;
-  private OutputStream socketOut;
-  private BlockReceiver blockReceiver = null;
+  private final InputStream socketIn; // 由socket提供的输入流
+  private OutputStream socketOut; // 由socket提供的输出流
+  private BlockReceiver blockReceiver = null; // 块接收器
   private final int ioFileBufferSize;
   private final int smallBufferSize;
   private Thread xceiver = null;
@@ -180,6 +180,11 @@ class DataXceiver extends Receiver implements Runnable {
     return socketOut;
   }
 
+  /**
+   * out-of-Band 报文都是控制信息
+   * @throws IOException
+   * @throws InterruptedException
+   */
   public void sendOOB() throws IOException, InterruptedException {
     BlockReceiver br = getCurrentBlockReceiver();
     if (br == null) {
@@ -189,7 +194,7 @@ class DataXceiver extends Receiver implements Runnable {
     // can resue the connection to issue a different request, trying sending
     // an OOB through the recently closed block receiver is harmless.
     LOG.info("Sending OOB to peer: {}", peer);
-    br.sendOOB();
+    br.sendOOB(); // 通过blockReceiver发生OOP控制信息
   }
 
   public void stopWriter() {
@@ -227,9 +232,9 @@ class DataXceiver extends Receiver implements Runnable {
       synchronized(this) {
         xceiver = Thread.currentThread();
       }
-      dataXceiverServer.addPeer(peer, Thread.currentThread(), this);
+      dataXceiverServer.addPeer(peer, Thread.currentThread(), this); // peer就是与对方的连接
       peer.setWriteTimeout(datanode.getDnConf().socketWriteTimeout);
-      InputStream input = socketIn;
+      InputStream input = socketIn; // 底层的TCP输入流
       try {
         IOStreamPair saslStreams = datanode.saslServer.receive(peer, socketOut,
           socketIn, datanode.getXferAddress().getPort(),
@@ -253,7 +258,7 @@ class DataXceiver extends Receiver implements Runnable {
         return;
       }
       
-      super.initialize(new DataInputStream(input));
+      super.initialize(new DataInputStream(input)); // 调用Receiver.initialize()
       
       // We process requests in a loop, and stay around for a short timeout.
       // This optimistic behaviour allows the other end to reuse connections.
@@ -268,7 +273,7 @@ class DataXceiver extends Receiver implements Runnable {
           } else {
             peer.setReadTimeout(dnConf.socketTimeout);
           }
-          op = readOp();
+          op = readOp(); // 从输入流中读取操作码op
         } catch (InterruptedIOException ignored) {
           // Time out while we wait for client rpc
           break;
@@ -289,7 +294,7 @@ class DataXceiver extends Receiver implements Runnable {
         }
 
         opStartTime = monotonicNow();
-        processOp(op);
+        processOp(op);// 调用Receiver.processOp()
         ++opsProcessed;
       } while ((peer != null) &&
           (!peer.isClosed() && dnConf.socketKeepaliveTimeout > 0));
@@ -575,7 +580,7 @@ class DataXceiver extends Receiver implements Runnable {
     long read = 0;
     updateCurrentThreadName("Sending block " + block);
     OutputStream baseStream = getOutputStream();
-    DataOutputStream out = getBufferedOutputStream();
+    DataOutputStream out = getBufferedOutputStream(); // 这是一个基于socket的TCP输出流
     checkAccess(out, true, block, blockToken, Op.READ_BLOCK,
         BlockTokenIdentifier.AccessMode.READ);
 

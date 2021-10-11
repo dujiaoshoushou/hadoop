@@ -186,16 +186,17 @@ public abstract class RamDiskReplicaTracker {
    * @param conf the configuration to be used
    * @param dataset the FsDataset object.
    * @return an instance of RamDiskReplicaTracker
+   * 受FsDatasetImpl调用以创建实体的对象
    */
   static RamDiskReplicaTracker getInstance(final Configuration conf,
                                            final FsDatasetImpl fsDataset) {
     final Class<? extends RamDiskReplicaTracker> trackerClass = conf.getClass(
         DFSConfigKeys.DFS_DATANODE_RAM_DISK_REPLICA_TRACKER_KEY,
         DFSConfigKeys.DFS_DATANODE_RAM_DISK_REPLICA_TRACKER_DEFAULT,
-        RamDiskReplicaTracker.class);
+        RamDiskReplicaTracker.class); // 从配置文件获取扩充了RamDiskReplicaTracker的类的名称，默认为RamDiskReplicaLruTracker
     final RamDiskReplicaTracker tracker = ReflectionUtils.newInstance(
-        trackerClass, conf);
-    tracker.initialize(fsDataset);
+        trackerClass, conf); // 创建一个新的对象
+    tracker.initialize(fsDataset); // 初始化
     return tracker;
   }
 

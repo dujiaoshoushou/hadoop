@@ -252,6 +252,9 @@ public interface FsDatasetSpi<V extends FsVolumeSpi> extends FSDatasetMBean {
    * Check whether the in-memory block record matches the block on the disk,
    * and, in case that they are not matched, update the record or mark it
    * as corrupted.
+   * 检查内存中的块记录是否与磁盘上的块
+   * 匹配，如果不匹配，则更新记录或将其标记为
+   * 已损坏
    */
   void checkAndUpdate(String bpid, ScanInfo info) throws IOException;
 

@@ -223,7 +223,7 @@ class DataXceiverServer implements Runnable {
     Peer peer = null;
     while (datanode.shouldRun && !datanode.shutdownForUpgrade) {
       try {
-        peer = peerServer.accept();
+        peer = peerServer.accept(); // 等待连接请求的到来并建立连接，peerServer是个TcpPeerServer，DataXceiverServer的下层是TCP/IP传输层
 
         // Make sure the xceiver count is not exceeded
         int curXceiverCount = datanode.getXceiverCount();
@@ -235,7 +235,7 @@ class DataXceiverServer implements Runnable {
 
         new Daemon(datanode.threadGroup,
             DataXceiver.create(peer, datanode, this))
-            .start();
+            .start(); // 创建DataXceiver线程并调用其start()函数
       } catch (SocketTimeoutException ignored) {
         // wake up to see if should continue to run
       } catch (AsynchronousCloseException ace) {
@@ -263,7 +263,7 @@ class DataXceiverServer implements Runnable {
             te);
         datanode.shouldRun = false;
       }
-    }
+    } // 只要节点不关闭，就永远循环
 
     // Close the server to stop reception of more requests.
     lock.lock();
