@@ -61,26 +61,35 @@ import org.apache.hadoop.thirdparty.protobuf.Message;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class Sender implements DataTransferProtocol {
-  private final DataOutputStream out;
+  private final DataOutputStream out; // 这是基于socket的TCP输出流
 
   /** Create a sender for DataTransferProtocol with a output stream. */
   public Sender(final DataOutputStream out) {
     this.out = out;
   }
 
-  /** Initialize a operation. */
+  /** Initialize a operation.
+   * 将操作码op写入输出流
+   * */
   private static void op(final DataOutput out, final Op op) throws IOException {
-    out.writeShort(DataTransferProtocol.DATA_TRANSFER_VERSION);
-    op.write(out);
+    out.writeShort(DataTransferProtocol.DATA_TRANSFER_VERSION); // 首先是版本号
+    op.write(out); // 然后是操作码
   }
 
+  /**
+   * 发送一个操作请求
+   * @param out
+   * @param opcode
+   * @param proto
+   * @throws IOException
+   */
   private static void send(final DataOutputStream out, final Op opcode,
       final Message proto) throws IOException {
     LOG.trace("Sending DataTransferOp {}: {}",
         proto.getClass().getSimpleName(), proto);
-    op(out, opcode);
-    proto.writeDelimitedTo(out);
-    out.flush();
+    op(out, opcode); // 操作请求的尾部是版本号+操作码
+    proto.writeDelimitedTo(out); // 报文内容，最后是一个分隔符
+    out.flush(); // 冲刷输出流
   }
 
   static private CachingStrategyProto getCachingStrategy(
@@ -106,14 +115,14 @@ public class Sender implements DataTransferProtocol {
 
     OpReadBlockProto proto = OpReadBlockProto.newBuilder()
         .setHeader(DataTransferProtoUtil.buildClientHeader(blk, clientName,
-            blockToken))
-        .setOffset(blockOffset)
-        .setLen(length)
-        .setSendChecksums(sendChecksum)
-        .setCachingStrategy(getCachingStrategy(cachingStrategy))
+            blockToken)) // 报头的构成，包括对数据块的描述等信息
+        .setOffset(blockOffset) // 然后是块内的起点
+        .setLen(length) // 需要读取的长度
+        .setSendChecksums(sendChecksum) // Checksum
+        .setCachingStrategy(getCachingStrategy(cachingStrategy)) // 是否将目录块置入缓存
         .build();
 
-    send(out, Op.READ_BLOCK, proto);
+    send(out, Op.READ_BLOCK, proto); // 在报文末尾添加上操作码并发送
   }
 
 
@@ -138,36 +147,36 @@ public class Sender implements DataTransferProtocol {
       final String storageId,
       final String[] targetStorageIds) throws IOException {
     ClientOperationHeaderProto header = DataTransferProtoUtil.buildClientHeader(
-        blk, clientName, blockToken);
+        blk, clientName, blockToken); // 报头的构成，包括对数据块的描述等信息
 
     ChecksumProto checksumProto =
         DataTransferProtoUtil.toProto(requestedChecksum);
 
-    OpWriteBlockProto.Builder proto = OpWriteBlockProto.newBuilder()
-        .setHeader(header)
-        .setStorageType(PBHelperClient.convertStorageType(storageType))
-        .addAllTargets(PBHelperClient.convert(targets, 1))
+    OpWriteBlockProto.Builder proto = OpWriteBlockProto.newBuilder() // 构筑OpWriteBlockProto等报文
+        .setHeader(header) // 设置报头
+        .setStorageType(PBHelperClient.convertStorageType(storageType)) // 然后是第一个节点的存储类型
+        .addAllTargets(PBHelperClient.convert(targets, 1)) // 流水线中的所有节点
         .addAllTargetStorageTypes(
-            PBHelperClient.convertStorageTypes(targetStorageTypes, 1))
-        .setStage(toProto(stage))
-        .setPipelineSize(pipelineSize)
+            PBHelperClient.convertStorageTypes(targetStorageTypes, 1)) // 所有节点的存储类型
+        .setStage(toProto(stage)) // 本次数据块写入所处的阶段
+        .setPipelineSize(pipelineSize) // 流水线长度
         .setMinBytesRcvd(minBytesRcvd)
         .setMaxBytesRcvd(maxBytesRcvd)
         .setLatestGenerationStamp(latestGenerationStamp)
         .setRequestedChecksum(checksumProto)
         .setCachingStrategy(getCachingStrategy(cachingStrategy))
-        .setAllowLazyPersist(allowLazyPersist)
+        .setAllowLazyPersist(allowLazyPersist) // 是否延迟进行持久化
         .setPinning(pinning)
         .addAllTargetPinnings(PBHelperClient.convert(targetPinnings, 1))
         .addAllTargetStorageIds(PBHelperClient.convert(targetStorageIds, 1));
     if (source != null) {
-      proto.setSource(PBHelperClient.convertDatanodeInfo(source));
+      proto.setSource(PBHelperClient.convertDatanodeInfo(source)); // 产生数据的源节点
     }
     if (storageId != null) {
       proto.setStorageId(storageId);
     }
 
-    send(out, Op.WRITE_BLOCK, proto.build());
+    send(out, Op.WRITE_BLOCK, proto.build()); // 在报文末尾添上操作码并发送
   }
 
   @Override

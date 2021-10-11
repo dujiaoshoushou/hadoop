@@ -27,8 +27,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class ExtendedBlock {
-  private String poolId;
-  private Block block;
+  private String poolId; // 数据块所属的BlockPool，也就是所属的NamNode
+  private Block block; // 数据块的属性
 
   public ExtendedBlock() {
     this(null, 0, 0, 0);

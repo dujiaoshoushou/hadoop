@@ -100,9 +100,9 @@ public class Block implements Writable, Comparable<Block> {
     return m.matches() ? Long.parseLong(m.group(1)) : 0;
   }
 
-  private long blockId;
-  private long numBytes;
-  private long generationStamp;
+  private long blockId; // 块号
+  private long numBytes; // 块的当前长度
+  private long generationStamp; // 块的世代标记，类似于版本号
 
   public Block() {this(0, 0, 0);}
 

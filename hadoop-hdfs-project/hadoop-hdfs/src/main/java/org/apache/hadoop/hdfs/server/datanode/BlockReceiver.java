@@ -78,7 +78,7 @@ class BlockReceiver implements Closeable {
   @VisibleForTesting
   static long CACHE_DROP_LAG_BYTES = 8 * 1024 * 1024;
   private final long datanodeSlowLogThresholdMs;
-  private DataInputStream in = null; // from where data are read
+  private DataInputStream in = null; // from where data are read 上游方向的输入数据通道
   private DataChecksum clientChecksum; // checksum used by client
   private DataChecksum diskChecksum; // checksum we write to disk
   
@@ -88,20 +88,20 @@ class BlockReceiver implements Closeable {
    * the DataNode needs to recalculate checksums before writing.
    */
   private final boolean needsChecksumTranslation;
-  private DataOutputStream checksumOut = null; // to crc file at local disk
+  private DataOutputStream checksumOut = null; // to crc file at local disk 这是CRC校验的输出流
   private final int bytesPerChecksum;
   private final int checksumSize;
   
-  private final PacketReceiver packetReceiver = new PacketReceiver(false);
+  private final PacketReceiver packetReceiver = new PacketReceiver(false); // PacketReceiver接收模块
   
   protected final String inAddr;
   protected final String myAddr;
   private String mirrorAddr;
   private String mirrorNameForMetrics;
-  private DataOutputStream mirrorOut;
-  private Daemon responder = null;
-  private DataTransferThrottler throttler;
-  private ReplicaOutputStreams streams;
+  private DataOutputStream mirrorOut; // 下游方向的数据输出通道
+  private Daemon responder = null; // 专门负责应答的线程
+  private DataTransferThrottler throttler; // 数据传输速度（带宽）调节器
+  private ReplicaOutputStreams streams; // 一对特殊的输出流，可以边写边进行CRC校验
   private DatanodeInfo srcDataNode = null;
   private DatanodeInfo[] downstreamDNs = DatanodeInfo.EMPTY_ARRAY;
   private final DataNode datanode;
@@ -119,9 +119,9 @@ class BlockReceiver implements Closeable {
   private final boolean isDatanode;
 
   /** the block to receive */
-  private final ExtendedBlock block; 
+  private final ExtendedBlock block;  // 正在接收的数据块描述
   /** the replica to write */
-  private ReplicaInPipeline replicaInfo;
+  private ReplicaInPipeline replicaInfo; // 实现了ReplicaInPipeline类对象，要写入的复份
   /** pipeline stage */
   private final BlockConstructionStage stage;
   private final boolean isTransfer;
@@ -140,7 +140,7 @@ class BlockReceiver implements Closeable {
   private final long responseInterval;
   private long lastResponseTime = 0;
   private boolean isReplaceBlock = false;
-  private DataOutputStream replyOut = null;
+  private DataOutputStream replyOut = null; // 上游方向的输出数据通道
   private long maxWriteToDiskMs = 0;
   
   private boolean pinning;
@@ -209,25 +209,29 @@ class BlockReceiver implements Closeable {
 
       //
       // Open local disk out
-      //
-      if (isDatanode) { //replication or move
+      // 第一步，根据不同情况创建文件或不同的ReplicaInPipeline对象
+      if (isDatanode) { //replication or move 如果操作时由DataNode启动的
         replicaHandler =
             datanode.data.createTemporary(storageType, storageId, block, false);
-      } else {
+        // == FsDatasetImpl.createTemporary()
+        // 在tmp目录下创建文件，并返回代表着这个replica的对象
+        // 返回值时个ReplicaInPipeline类对象，这是对抽象类ReplicaInfo的扩充
+      } else { // 操作由用户启动
         switch (stage) {
         case PIPELINE_SETUP_CREATE:
           replicaHandler = datanode.data.createRbw(storageType, storageId,
               block, allowLazyPersist);
+          // === FsDatasetImpl.createRbw(),在rbw目录下创建文件
           datanode.notifyNamenodeReceivingBlock(
-              block, replicaHandler.getReplica().getStorageUuid());
+              block, replicaHandler.getReplica().getStorageUuid()); // 向NameNode报告接收到的数据块
           break;
         case PIPELINE_SETUP_STREAMING_RECOVERY:
           replicaHandler = datanode.data.recoverRbw(
               block, newGs, minBytesRcvd, maxBytesRcvd);
-          block.setGenerationStamp(newGs);
+          block.setGenerationStamp(newGs); // 设置数据块的世代标记
           break;
         case PIPELINE_SETUP_APPEND:
-          replicaHandler = datanode.data.append(block, newGs, minBytesRcvd);
+          replicaHandler = datanode.data.append(block, newGs, minBytesRcvd);// ==FsDatasetImpl.append(),在原有文件末尾添加
           block.setGenerationStamp(newGs);
           datanode.notifyNamenodeReceivingBlock(
               block, replicaHandler.getReplica().getStorageUuid());
@@ -242,12 +246,13 @@ class BlockReceiver implements Closeable {
         case TRANSFER_FINALIZED:
           // this is a transfer destination
           replicaHandler = datanode.data.createTemporary(storageType, storageId,
-              block, isTransfer);
+              block, isTransfer); // == FsDatasetImpl.createTemporary()
           break;
         default: throw new IOException("Unsupported stage " + stage + 
               " while receiving block " + block + " from " + inAddr);
         }
       }
+      // 第二步，为目标数据块的复份存储打开或创建一组文件
       replicaInfo = replicaHandler.getReplica();
       this.dropCacheBehindWrites = (cachingStrategy.getDropBehind() == null) ?
         datanode.getDnConf().dropCacheBehindWrites :
@@ -255,25 +260,25 @@ class BlockReceiver implements Closeable {
       this.syncBehindWrites = datanode.getDnConf().syncBehindWrites;
       this.syncBehindWritesInBackground = datanode.getDnConf().
           syncBehindWritesInBackground;
-      
+      // isCreate为true表示需新建文件，而不是对已有文件的append
       final boolean isCreate = isDatanode || isTransfer 
           || stage == BlockConstructionStage.PIPELINE_SETUP_CREATE;
-      streams = replicaInfo.createStreams(isCreate, requestedChecksum);
+      streams = replicaInfo.createStreams(isCreate, requestedChecksum); // 创建用来将此复份写入文件的输出流，这是个ReplicaOutputStreams对象
       assert streams != null : "null streams!";
-
+      // 第三步，为CRC校验做好准备
       // read checksum meta information
       this.clientChecksum = requestedChecksum;
-      this.diskChecksum = streams.getChecksum();
-      this.needsChecksumTranslation = !clientChecksum.equals(diskChecksum);
-      this.bytesPerChecksum = diskChecksum.getBytesPerChecksum();
-      this.checksumSize = diskChecksum.getChecksumSize();
+      this.diskChecksum = streams.getChecksum(); // 这是ReplicaOutputStreams.checksum
+      this.needsChecksumTranslation = !clientChecksum.equals(diskChecksum); // 不同就得转换
+      this.bytesPerChecksum = diskChecksum.getBytesPerChecksum(); // 校验节（chunk)的大小
+      this.checksumSize = diskChecksum.getChecksumSize(); // 校验数据的大小
 
       this.checksumOut = new DataOutputStream(new BufferedOutputStream(
           streams.getChecksumOut(), DFSUtilClient.getSmallBufferSize(
-          datanode.getConf())));
+          datanode.getConf()))); // 以带缓冲的校验输出流作为BlockReceiver的校验输出流
       // write data chunk header if creating a new replica
       if (isCreate) {
-        BlockMetadataHeader.writeHeader(checksumOut, diskChecksum);
+        BlockMetadataHeader.writeHeader(checksumOut, diskChecksum); // 写入元数据文件头部
       } 
     } catch (ReplicaAlreadyExistsException bae) {
       throw bae;
@@ -508,6 +513,7 @@ class BlockReceiver implements Closeable {
    * 
    * This does not verify the original checksums, under the assumption
    * that they have already been validated.
+   * 将用户的CRC校验chunks转换成磁盘上的CRC检验
    */
   private void translateChunks(ByteBuffer dataBuf, ByteBuffer checksumBuf) {
     diskChecksum.calculateChunkedSums(dataBuf, checksumBuf);
@@ -530,6 +536,7 @@ class BlockReceiver implements Closeable {
   /** 
    * Receives and processes a packet. It can contain many chunks.
    * returns the number of data bytes that the packet has.
+   * 接收一个Packet
    */
   private int receivePacket() throws IOException {
     // read the next packet
@@ -887,6 +894,10 @@ class BlockReceiver implements Closeable {
     return Arrays.copyOfRange(array, end - size, end);
   }
 
+  /**
+   * 对宿主系统文件读写缓冲的管理
+   * @param offsetInBlock
+   */
   private void manageWriterOsCache(long offsetInBlock) {
     try {
       if (streams.getOutFd() != null &&
@@ -950,7 +961,7 @@ class BlockReceiver implements Closeable {
         .getRestartOOBStatus());
   }
 
-  void receiveBlock(
+  void  receiveBlock(
       DataOutputStream mirrOut, // output to next datanode
       DataInputStream mirrIn,   // input from next datanode
       DataOutputStream replyOut,  // output to previous datanode
@@ -1216,7 +1227,10 @@ class BlockReceiver implements Closeable {
    * Processes responses from downstream datanodes in the pipeline
    * and sends back replies to the originator.
    */
-  class PacketResponder implements Runnable, Closeable {
+  class
+
+
+  PacketResponder implements Runnable, Closeable {
     /** queue for packets waiting for ack - synchronization using monitor lock */
     private final Queue<Packet> ackQueue = new ArrayDeque<>();
     /** the thread that spawns this responder */

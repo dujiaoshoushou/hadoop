@@ -38,9 +38,9 @@ public class ReplicaOutputStreams implements Closeable {
 
   private FileDescriptor outFd = null;
   /** Stream to block. */
-  private OutputStream dataOut;
+  private OutputStream dataOut; // 用于数据的输出
   /** Stream to checksum. */
-  private final OutputStream checksumOut;
+  private final OutputStream checksumOut; // 用于CRC校验的输出
   private final DataChecksum checksum;
   private final FsVolumeSpi volume;
   private final FileIoProvider fileIoProvider;
