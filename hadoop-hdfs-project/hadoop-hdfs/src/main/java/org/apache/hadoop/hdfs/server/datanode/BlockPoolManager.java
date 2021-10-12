@@ -188,11 +188,11 @@ class BlockPoolManager {
       // Step 1. For each of the new nameservices, figure out whether
       // it's an update of the set of NNs for an existing NS,
       // or an entirely new nameservice.
-      for (String nameserviceId : addrMap.keySet()) {
+      for (String nameserviceId : addrMap.keySet()) { // 对于newAddressMap中的每个地址
         if (bpByNameserviceId.containsKey(nameserviceId)) {
-          toRefresh.add(nameserviceId);
+          toRefresh.add(nameserviceId); // 原来就有连接的是toRefersh
         } else {
-          toAdd.add(nameserviceId);
+          toAdd.add(nameserviceId); // 原来没有连接的是toAdd
         }
       }
       
@@ -213,7 +213,7 @@ class BlockPoolManager {
         LOG.info("Starting BPOfferServices for nameservices: " +
             Joiner.on(",").useForNull("<default>").join(toAdd));
       
-        for (String nsToAdd : toAdd) {
+        for (String nsToAdd : toAdd) { // 对于需要新建连接的每个nameservice
           Map<String, InetSocketAddress> nnIdToAddr = addrMap.get(nsToAdd);
           Map<String, InetSocketAddress> nnIdToLifelineAddr =
               lifelineAddrMap.get(nsToAdd);
@@ -230,12 +230,12 @@ class BlockPoolManager {
                 nnIdToLifelineAddr.get(nnId) : null);
           }
           BPOfferService bpos = createBPOS(nsToAdd, nnIds, addrs,
-              lifelineAddrs); // 创建一个BPOfferService
+              lifelineAddrs); // 创建一个专门为其服务的BPOfferService对象
           bpByNameserviceId.put(nsToAdd, bpos);
           offerServices.add(bpos);
         }
       }
-      startAll();
+      startAll(); // 以具体用户的身份启动各个BPServiceActor对象
     }
 
     // Step 4. Shut down old nameservices. This happens outside

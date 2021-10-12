@@ -66,18 +66,18 @@ class BPOfferService {
    * is registering with. This is assigned after
    * the first phase of the handshake.
    */
-  NamespaceInfo bpNSInfo;
+  NamespaceInfo bpNSInfo; // 关于目标Namespace即nameservice的信息
 
   /**
    * The registration information for this block pool.
    * This is assigned after the second phase of the
    * handshake.
    */
-  volatile DatanodeRegistration bpRegistration;
+  volatile DatanodeRegistration bpRegistration; // 本节点向该nameservice的登记信息
 
   private final String nameserviceId;
   private volatile String bpId;
-  private final DataNode dn;
+  private final DataNode dn; // 所在的DataNode
 
   /**
    * A reference to the BPServiceActor associated with the currently
@@ -85,13 +85,14 @@ class BPOfferService {
    * this can be null. If non-null, this must always refer to a member
    * of the {@link #bpServices} list.
    */
-  private BPServiceActor bpServiceToActive = null;
+  private BPServiceActor bpServiceToActive = null; // 通向当前活跃NameNode的BPServiceActor
   
   /**
    * The list of all actors for namenodes in this nameservice, regardless
    * of their active or standby states.
    */
   // 这个联络组中对于每个NameNode都有个联络员
+  // 属于同一nameservice的所有BPServiceActor
   private final List<BPServiceActor> bpServices =
     new CopyOnWriteArrayList<BPServiceActor>();
 
@@ -139,7 +140,7 @@ class BPOfferService {
     this.nameserviceId = nameserviceId;
     this.dn = dn;
 
-    for (int i = 0; i < nnAddrs.size(); ++i) {
+    for (int i = 0; i < nnAddrs.size(); ++i) { // 对这个nameservie的每个NameNode
       this.bpServices.add(new BPServiceActor(nameserviceId, nnIds.get(i),
           nnAddrs.get(i), lifelineNnAddrs.get(i), this)); // 为每个NameNode创建一个BPServiceActor线程负责联络
     }
@@ -387,7 +388,7 @@ class BPOfferService {
     }
 
     try {
-      if (setNamespaceInfo(nsInfo) == null) {
+      if (setNamespaceInfo(nsInfo) == null) { // 说明这是第一次连上这个nameservice
         boolean success = false;
 
         // Now that we know the namespace ID, etc, we can pass this to the DN.

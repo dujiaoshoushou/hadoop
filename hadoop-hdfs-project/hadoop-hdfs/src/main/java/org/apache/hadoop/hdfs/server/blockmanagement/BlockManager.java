@@ -2560,7 +2560,7 @@ public class BlockManager implements BlockStatsMXBean {
   public void registerDatanode(DatanodeRegistration nodeReg)
       throws IOException {
     assert namesystem.hasWriteLock();
-    datanodeManager.registerDatanode(nodeReg);
+    datanodeManager.registerDatanode(nodeReg); // DatanodeManager是具体的主管部门
     bmSafeMode.checkSafeMode();
   }
 

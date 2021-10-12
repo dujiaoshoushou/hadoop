@@ -144,13 +144,13 @@ public class DatanodeProtocolClientSideTranslatorPB implements
         .setRegistration(PBHelper.convert(registration))
         .setXmitsInProgress(xmitsInProgress).setXceiverCount(xceiverCount)
         .setFailedVolumes(failedVolumes)
-        .setRequestFullBlockReportLease(requestFullBlockReportLease);
-    builder.addAllReports(PBHelperClient.convertStorageReports(reports));
+        .setRequestFullBlockReportLease(requestFullBlockReportLease); // 构建报文头部
+    builder.addAllReports(PBHelperClient.convertStorageReports(reports)); // 将reports加入报文
     if (cacheCapacity != 0) {
-      builder.setCacheCapacity(cacheCapacity);
+      builder.setCacheCapacity(cacheCapacity); // 将缓存容量加入报文
     }
     if (cacheUsed != 0) {
-      builder.setCacheUsed(cacheUsed);
+      builder.setCacheUsed(cacheUsed); // 将已耗用缓存容量加入报文
     }
     if (volumeFailureSummary != null) {
       builder.setVolumeFailureSummary(PBHelper.convertVolumeFailureSummary(
@@ -165,14 +165,14 @@ public class DatanodeProtocolClientSideTranslatorPB implements
 
     HeartbeatResponseProto resp;
     try {
-      resp = rpcProxy.sendHeartbeat(NULL_CONTROLLER, builder.build());
+      resp = rpcProxy.sendHeartbeat(NULL_CONTROLLER, builder.build()); // 将RPC报文发t  往NameNode，并等待对方发回响应报文resp
     } catch (ServiceException se) {
       throw ProtobufHelper.getRemoteException(se);
     }
-    DatanodeCommand[] cmds = new DatanodeCommand[resp.getCmdsList().size()];
+    DatanodeCommand[] cmds = new DatanodeCommand[resp.getCmdsList().size()]; // 从响应报文中获取命令数组大小，并按此大小创建数组cmds
     int index = 0;
     for (DatanodeCommandProto p : resp.getCmdsList()) {
-      cmds[index] = PBHelper.convert(p);
+      cmds[index] = PBHelper.convert(p); // 从响应报文中抽取所搭载的命令数组，并逐条进行格式转换
       index++;
     }
     RollingUpgradeStatus rollingUpdateStatus = null;
@@ -182,6 +182,7 @@ public class DatanodeProtocolClientSideTranslatorPB implements
     } else if (resp.hasRollingUpgradeStatus()) {
       rollingUpdateStatus = PBHelperClient.convert(resp.getRollingUpgradeStatus());
     }
+    // 创建一个（DataNode上的)HeartbeatResponse对象，将其返回个BPServiceActor
     return new HeartbeatResponse(cmds, PBHelper.convert(resp.getHaStatus()),
         rollingUpdateStatus, resp.getFullBlockReportLeaseId());
   }

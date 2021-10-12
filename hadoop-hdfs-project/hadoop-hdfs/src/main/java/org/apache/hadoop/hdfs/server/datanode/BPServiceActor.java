@@ -87,15 +87,16 @@ import com.google.common.base.Joiner;
 class BPServiceActor implements Runnable {
   
   static final Logger LOG = DataNode.LOG;
-  final InetSocketAddress nnAddr;
+  final InetSocketAddress nnAddr; // 所连接的NameNode的地址
   HAServiceState state;
 
-  final BPOfferService bpos;
+  final BPOfferService bpos; // 所属的BPOfferService
   
   volatile long lastCacheReport = 0;
   private final Scheduler scheduler;
 
   Thread bpThread;
+  // NameNode的Proxy
   DatanodeProtocolClientSideTranslatorPB bpNamenode;
 
   enum RunningState {
@@ -113,7 +114,7 @@ class BPServiceActor implements Runnable {
   private final SortedSet<Integer> blockReportSizes =
       Collections.synchronizedSortedSet(new TreeSet<>());
   private final int maxDataLength;
-
+  // 管理增量块报告 (IBR)。
   private final IncrementalBlockReportManager ibrManager;
 
   private DatanodeRegistration bpRegistration;
@@ -241,7 +242,7 @@ class BPServiceActor implements Runnable {
     NamespaceInfo nsInfo = null;
     while (shouldRun()) {
       try {
-        nsInfo = bpNamenode.versionRequest();
+        nsInfo = bpNamenode.versionRequest(); // 这是对NameNode的RPC调用
         LOG.debug(this + " received versionRequest response: " + nsInfo);
         break;
       } catch(SocketTimeoutException e) {  // namenode is busy
@@ -283,21 +284,27 @@ class BPServiceActor implements Runnable {
 
   private void connectToNNAndHandshake() throws IOException {
     // get NN proxy
+    // 建立与NameNode的RPC连接，所得proxy即为bpNamenode
+    // bpNamenode的类型为DatanodeProtocolClientSideTranslatorPB
     bpNamenode = dn.connectToNN(nnAddr);
 
     // First phase of the handshake with NN - get the namespace
-    // info.
+    // info. 向NameNode索取版本信息
     NamespaceInfo nsInfo = retrieveNamespaceInfo();
 
     // Verify that this matches the other NN in this HA pair.
     // This also initializes our block pool in the DN if we are
     // the first NN connection for this BP.
+    // 验证这与此 HA 对中的另一个 NN 匹配。
+    // 如果我们是此 BP 的第一个 NN 连接，
+    // 这也会在 DN 中初始化我们的块池。
     bpos.verifyAndSetNamespaceInfo(this, nsInfo);
 
     /* set thread name again to include NamespaceInfo when it's available. */
     this.bpThread.setName(formatThreadName("heartbeating", nnAddr));
 
     // Second phase of the handshake with the NN.
+    // 正式向NameNode登记
     register(nsInfo);
   }
 
@@ -513,9 +520,11 @@ class BPServiceActor implements Runnable {
     return reportSize;
   }
 
+  // 心跳报告的发送
   HeartbeatResponse sendHeartBeat(boolean requestBlockReportLease)
       throws IOException {
     scheduler.scheduleNextHeartbeat();
+    // 填写StorageReport数组reports，这个数组是心跳报文的核心
     StorageReport[] reports =
         dn.getFSDataset().getStorageReports(bpos.getBlockPoolId());
     if (LOG.isDebugEnabled()) {
@@ -538,7 +547,7 @@ class BPServiceActor implements Runnable {
         outliersReportDue && dn.getDiskMetrics() != null ?
             SlowDiskReports.create(dn.getDiskMetrics().getDiskOutliersStats()) :
             SlowDiskReports.EMPTY_REPORT;
-
+    // 通过PB层发送心跳报文，实质上是对NameNode的RPC调用
     HeartbeatResponse response = bpNamenode.sendHeartbeat(bpRegistration,
         reports,
         dn.getFSDataset().getCacheCapacity(),
@@ -673,7 +682,7 @@ class BPServiceActor implements Runnable {
           boolean requestBlockReportLease = (fullBlockReportLeaseId == 0) &&
                   scheduler.isBlockReportDue(startTime);
           if (!dn.areHeartbeatsDisabledForTests()) {
-            resp = sendHeartBeat(requestBlockReportLease);
+            resp = sendHeartBeat(requestBlockReportLease); // 发送心跳报告，并接收回应
             assert resp != null;
             if (resp.getFullBlockReportLeaseId() != 0) {
               if (fullBlockReportLeaseId != 0) {
@@ -718,13 +727,14 @@ class BPServiceActor implements Runnable {
           LOG.info("Forcing a full block report to " + nnAddr);
         }
         if ((fullBlockReportLeaseId != 0) || forceFullBr) {
+          // 如果时间到点就向NameNode提交数据块存储报告并接收回应
           cmds = blockReport(fullBlockReportLeaseId);
           fullBlockReportLeaseId = 0;
         }
         commandProcessingThread.enqueue(cmds);
 
         if (!dn.areCacheReportsDisabledForTests()) {
-          DatanodeCommand cmd = cacheReport();
+          DatanodeCommand cmd = cacheReport(); // 如果时间到点就向NameNode提交数据块缓存报告并接收回应
           commandProcessingThread.enqueue(cmd);
         }
 
@@ -782,6 +792,7 @@ class BPServiceActor implements Runnable {
   void register(NamespaceInfo nsInfo) throws IOException {
     // The handshake() phase loaded the block pool storage
     // off disk - so update the bpRegistration object from that info
+    // 创建一个登记请求
     DatanodeRegistration newBpRegistration = bpos.createRegistration();
 
     LOG.info(this + " beginning handshake with NN");
@@ -789,6 +800,7 @@ class BPServiceActor implements Runnable {
     while (shouldRun()) {
       try {
         // Use returned registration from namenode with updated fields
+        // 通过proxy远程调用NameNode上的registerDatanode（）
         newBpRegistration = bpNamenode.registerDatanode(newBpRegistration);
         newBpRegistration.setNamespaceInfo(nsInfo);
         bpRegistration = newBpRegistration;
@@ -820,6 +832,7 @@ class BPServiceActor implements Runnable {
     fullBlockReportLeaseId = 0;
 
     // random short delay - helps scatter the BR from all DNs
+    // 安排下次发送报告的时间
     scheduler.scheduleBlockReport(dnConf.initialBlockReportDelayMs, true);
   }
 
@@ -875,7 +888,7 @@ class BPServiceActor implements Runnable {
 
       while (shouldRun()) {
         try {
-          offerService();
+          offerService(); // 向NameNode发送心跳和报告，并执行NameNode发回的命令
         } catch (Exception ex) {
           LOG.error("Exception in BPOfferService for " + this, ex);
           sleepAndLogInterrupts(5000, "offering service");

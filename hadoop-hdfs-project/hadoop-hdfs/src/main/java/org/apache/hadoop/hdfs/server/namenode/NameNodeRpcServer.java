@@ -1577,7 +1577,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       throws IOException {
     checkNNStartup();
     verifySoftwareVersion(nodeReg);
-    namesystem.registerDatanode(nodeReg);
+    namesystem.registerDatanode(nodeReg); // 让FSNamesystem记下这个DataNode
     return nodeReg;
   }
 

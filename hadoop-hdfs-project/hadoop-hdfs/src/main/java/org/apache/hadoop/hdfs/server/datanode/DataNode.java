@@ -1704,6 +1704,7 @@ public class DataNode extends ReconfigurableBase
     // the dataset, block scanners, etc.
     //  如果这是要连接的第一个块池，则初始化
     //  数据集、块扫描器等。
+    // 准备好这个Namespace在本地的存储空间
     initStorage(nsInfo);
 
     try {
