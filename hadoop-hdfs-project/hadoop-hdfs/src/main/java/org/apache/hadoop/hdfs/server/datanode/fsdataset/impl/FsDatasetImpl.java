@@ -1231,7 +1231,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
       // The other reason is that an "append" is occurring to this block.
 
       // check the validity of the parameter
-      if (newGS < b.getGenerationStamp()) {
+      if (newGS < b.getGenerationStamp()) { // gs是世代标记（Generation Stamp）
         throw new IOException("The new generation stamp " + newGS +
             " should be greater than the replica " + b + "'s generation stamp");
       }
@@ -1428,7 +1428,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
     try (AutoCloseableLock lock = datasetWriteLock.acquire()) {
       ReplicaInfo replicaInfo = volumeMap.get(b.getBlockPoolId(),
           b.getBlockId());
-      if (replicaInfo != null) {
+      if (replicaInfo != null) { // 同一数据块的复份业已存在
         throw new ReplicaAlreadyExistsException("Block " + b +
             " already exists in state " + replicaInfo.getState() +
             " and thus cannot be created.");
@@ -1442,7 +1442,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
       if (allowLazyPersist &&
           lazyWriter != null &&
           b.getNumBytes() % cacheManager.getOsPageSize() == 0 &&
-          reserveLockedMemory(b.getNumBytes())) {
+          reserveLockedMemory(b.getNumBytes())) { // 如果允许延迟持久化就先写入RamDisk
         try {
           // First try to place the block on a transient volume.
           ref = volumes.getNextTransientVolume(b.getNumBytes());
@@ -1459,7 +1459,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
         }
       }
 
-      if (ref == null) {
+      if (ref == null) { // 不允许延迟持久化，指定去哪就去哪
         ref = volumes.getNextVolume(storageType, storageId, b.getNumBytes());
       }
 
@@ -1472,7 +1472,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
 
       ReplicaInPipeline newReplicaInfo;
       try {
-        newReplicaInfo = v.createRbw(b);
+        newReplicaInfo = v.createRbw(b); // 创建一个
         if (newReplicaInfo.getReplicaInfo().getState() != ReplicaState.RBW) {
           throw new IOException("CreateRBW returned a replica of state "
               + newReplicaInfo.getReplicaInfo().getState()
@@ -1669,6 +1669,7 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
            * else If transfer request, then accept it.
            * else if state is not RBW/Temporary, then reject
            * If current block is PROVIDED, ignore the replica.
+           * 复份已经存在，但如果是ReplicaInPipeline且版本更老，那也是允许的。
            */
           if (((currentReplicaInfo.getGenerationStamp() >= b
               .getGenerationStamp()) || (!isTransfer && !isInPipeline))
@@ -1711,17 +1712,17 @@ class FsDatasetImpl implements FsDatasetSpi<FsVolumeImpl> {
     }
     try (AutoCloseableLock lock = datasetWriteLock.acquire()) {
       FsVolumeReference ref = volumes.getNextVolume(storageType, storageId, b
-          .getNumBytes());
+          .getNumBytes()); // 根据所指定的存储类型和数据量从volumes中找到相应的文件卷
       FsVolumeImpl v = (FsVolumeImpl) ref.getVolume();
       ReplicaInPipeline newReplicaInfo;
       try {
-        newReplicaInfo = v.createTemporary(b);
+        newReplicaInfo = v.createTemporary(b); // 在此文件卷的tmp目录下创建临时文件,且为此数据库复份创建一个ReplicaInPipeline
       } catch (IOException e) {
         IOUtils.cleanup(null, ref);
         throw e;
       }
 
-      volumeMap.add(b.getBlockPoolId(), newReplicaInfo.getReplicaInfo());
+      volumeMap.add(b.getBlockPoolId(), newReplicaInfo.getReplicaInfo()); // 并将其加入volumeMap中
       return new ReplicaHandler(newReplicaInfo, ref);
     }
   }

@@ -943,7 +943,7 @@ public class FsVolumeImpl implements FsVolumeSpi {
     checkReference();
     reserveSpaceForReplica(b.getNumBytes());
     try {
-      return getBlockPoolSlice(bpid).createRbwFile(b);
+      return getBlockPoolSlice(bpid).createRbwFile(b); // == BlockPoolSlice.createRbwFile(Block b)
     } catch (IOException exception) {
       releaseReservedSpace(b.getNumBytes());
       throw exception;

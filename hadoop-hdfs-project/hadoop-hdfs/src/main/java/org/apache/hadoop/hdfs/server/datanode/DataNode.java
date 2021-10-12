@@ -2398,7 +2398,7 @@ public class DataNode extends ReconfigurableBase
   void transferBlocks(String poolId, Block blocks[],
       DatanodeInfo[][] xferTargets, StorageType[][] xferTargetStorageTypes,
       String[][] xferTargetStorageIDs) {
-    for (int i = 0; i < blocks.length; i++) {
+    for (int i = 0; i < blocks.length; i++) { // 对于NameNode交办的每个数据块
       try {
         transferBlock(new ExtendedBlock(poolId, blocks[i]), xferTargets[i],
             xferTargetStorageTypes[i], xferTargetStorageIDs[i]);
@@ -2605,6 +2605,7 @@ public class DataNode extends ReconfigurableBase
             targetStorageIds);
 
         // send data & checksum
+        // 然后才发生数据块
         blockSender.sendBlock(out, unbufOut, throttler);
 
         // no response necessary
@@ -2613,7 +2614,7 @@ public class DataNode extends ReconfigurableBase
             b, b.getNumBytes(), curTarget);
 
         // read ack
-        if (isClient) {
+        if (isClient) { // 如果是由client发起这对方会有回应确认
           DNTransferAckProto closeAck = DNTransferAckProto.parseFrom(
               PBHelperClient.vintPrefixed(in));
           LOG.debug("{}: close-ack={}", getClass().getSimpleName(), closeAck);

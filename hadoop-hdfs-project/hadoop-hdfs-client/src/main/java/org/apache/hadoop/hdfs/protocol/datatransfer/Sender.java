@@ -177,6 +177,7 @@ public class Sender implements DataTransferProtocol {
     }
 
     send(out, Op.WRITE_BLOCK, proto.build()); // 在报文末尾添上操作码并发送
+    // 对方收到WRIE_BLOCK报文后会调用processOp(),然后在DataXceiver.writeBlock()
   }
 
   @Override

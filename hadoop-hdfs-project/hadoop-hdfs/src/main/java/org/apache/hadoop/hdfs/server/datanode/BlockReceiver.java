@@ -539,7 +539,7 @@ class BlockReceiver implements Closeable {
    * 接收一个Packet
    */
   private int receivePacket() throws IOException {
-    // read the next packet
+    // read the next packet 接收下一个Packet
     packetReceiver.receiveNextPacket(in);
 
     PacketHeader header = packetReceiver.getHeader();
@@ -563,7 +563,7 @@ class BlockReceiver implements Closeable {
 
     long offsetInBlock = header.getOffsetInBlock();
     long seqno = header.getSeqno();
-    boolean lastPacketInBlock = header.isLastPacketInBlock();
+    boolean lastPacketInBlock = header.isLastPacketInBlock(); // 是不是数据块中最后一个Packet
     final int len = header.getDataLen();
     boolean syncBlock = header.getSyncBlock();
 
@@ -576,7 +576,7 @@ class BlockReceiver implements Closeable {
     }
 
     // update received bytes
-    final long firstByteInBlock = offsetInBlock;
+    final long firstByteInBlock = offsetInBlock; // 这个Packet所载的数据在数据块中的位置
     offsetInBlock += len;
     if (replicaInfo.getNumBytes() < offsetInBlock) {
       replicaInfo.setNumBytes(offsetInBlock);
@@ -585,7 +585,7 @@ class BlockReceiver implements Closeable {
     // put in queue for pending acks, unless sync was requested
     if (responder != null && !syncBlock && !shouldVerifyChecksum()) {
       ((PacketResponder) responder.getRunnable()).enqueue(seqno,
-          lastPacketInBlock, offsetInBlock, Status.SUCCESS);
+          lastPacketInBlock, offsetInBlock, Status.SUCCESS); // 挂入应答线程PacketResponder的队列，供发送响应信息
     }
 
     // Drop heartbeat for testing.
@@ -594,14 +594,15 @@ class BlockReceiver implements Closeable {
       return 0;
     }
 
-    //First write the packet to the mirror:
+    //First write the packet to the mirror: 如果需要接力转发
     if (mirrorOut != null && !mirrorError) {
       try {
         long begin = Time.monotonicNow();
         // For testing. Normally no-op.
         DataNodeFaultInjector.get().stopSendingPacketDownstream(mirrorAddr);
-        packetReceiver.mirrorPacketTo(mirrorOut);
-        mirrorOut.flush();
+        packetReceiver.mirrorPacketTo(mirrorOut); // 将接收到的Packet通过另一个输出流写出，将这个Packet按照原样转发个下游节点
+                                                  // 包括数据和校验码两个部分
+        mirrorOut.flush(); // 输出流mirrorOut创建于DataXceiver.writeBlock()
         long now = Time.monotonicNow();
         this.lastSentTime.set(now);
         long duration = now - begin;
@@ -620,18 +621,18 @@ class BlockReceiver implements Closeable {
       }
     }
     
-    ByteBuffer dataBuf = packetReceiver.getDataSlice();
-    ByteBuffer checksumBuf = packetReceiver.getChecksumSlice();
+    ByteBuffer dataBuf = packetReceiver.getDataSlice(); // 这个Packet中的数据部分
+    ByteBuffer checksumBuf = packetReceiver.getChecksumSlice(); // CRC校验码部分
     
-    if (lastPacketInBlock || len == 0) {
+    if (lastPacketInBlock || len == 0) { // 如果是数据块中最后一个Packet
       if(LOG.isDebugEnabled()) {
         LOG.debug("Receiving an empty packet or the end of the block " + block);
       }
       // sync block if requested
       if (syncBlock) {
-        flushOrSync(true);
+        flushOrSync(true); // 将块数据和元数据文件刷新到磁盘。
       }
-    } else {
+    } else { // 如果不是数据块中最后一个Packet
       final int checksumLen = diskChecksum.getChecksumSize(len);
       final int checksumReceivedLen = checksumBuf.capacity();
 
@@ -640,9 +641,9 @@ class BlockReceiver implements Closeable {
             + checksumReceivedLen + " but expected length is " + checksumLen);
       }
 
-      if (checksumReceivedLen > 0 && shouldVerifyChecksum()) {
+      if (checksumReceivedLen > 0 && shouldVerifyChecksum()) { // 有校验码，并要求校验
         try {
-          verifyChunks(dataBuf, checksumBuf);
+          verifyChunks(dataBuf, checksumBuf); // 逐个chunk进行CRC验算
         } catch (IOException ioe) {
           // checksum error detected locally. there is no reason to continue.
           if (responder != null) {
@@ -658,7 +659,7 @@ class BlockReceiver implements Closeable {
           throw new IOException("Terminating due to a checksum error." + ioe);
         }
  
-        if (needsChecksumTranslation) {
+        if (needsChecksumTranslation) { // 如果要求校验码转换（校验多项式不一样）
           // overwrite the checksums in the packet buffer with the
           // appropriate polynomial for the disk storage.
           translateChunks(dataBuf, checksumBuf);
@@ -742,7 +743,7 @@ class BlockReceiver implements Closeable {
           // Write data to disk.
           long begin = Time.monotonicNow();
           streams.writeDataToDisk(dataBuf.array(),
-              startByteToDisk, numBytesToDisk);
+              startByteToDisk, numBytesToDisk); // 写数据文件
           long duration = Time.monotonicNow() - begin;
           if (duration > datanodeSlowLogThresholdMs && LOG.isWarnEnabled()) {
             LOG.warn("Slow BlockReceiver write data to disk cost:" + duration
@@ -756,9 +757,9 @@ class BlockReceiver implements Closeable {
           }
 
           final byte[] lastCrc;
-          if (shouldNotWriteChecksum) {
+          if (shouldNotWriteChecksum) { // 如果这一次不应该写CRC校验文件
             lastCrc = null;
-          } else {
+          } else {  // 需要CRC校验文件
             int skip = 0;
             byte[] crcBytes = null;
 
@@ -783,7 +784,8 @@ class BlockReceiver implements Closeable {
               byte[] buf = FSOutputSummer.convertToByteStream(partialCrc,
                   checksumSize);
               crcBytes = copyLastChunkChecksum(buf, checksumSize, buf.length);
-              checksumOut.write(buf);
+              checksumOut.write(buf); // 写CRC校验文件，即元数据文件，扩展名为.meta
+                                      // 输出流checksumOut是在BlockReceiver的构造函数中创建的
               if(LOG.isDebugEnabled()) {
                 LOG.debug("Writing out partial crc for data len " + len +
                     ", skip=" + skip);
@@ -821,9 +823,9 @@ class BlockReceiver implements Closeable {
           }
 
           /// flush entire packet, sync if requested
-          flushOrSync(syncBlock);
+          flushOrSync(syncBlock); // 冲刷输出流
           
-          replicaInfo.setLastChecksumAndDataLen(offsetInBlock, lastCrc);
+          replicaInfo.setLastChecksumAndDataLen(offsetInBlock, lastCrc); // 记录在replicaInfo中
 
           datanode.metrics.incrBytesWritten(len);
           datanode.metrics.incrTotalWriteTime(duration);
@@ -838,7 +840,7 @@ class BlockReceiver implements Closeable {
 
     // if sync was requested, put in queue for pending acks here
     // (after the fsync finished)
-    if (responder != null && (syncBlock || shouldVerifyChecksum())) {
+    if (responder != null && (syncBlock || shouldVerifyChecksum())) { // 要求应答线程发出响应
       ((PacketResponder) responder.getRunnable()).enqueue(seqno,
           lastPacketInBlock, offsetInBlock, Status.SUCCESS);
     }
@@ -861,7 +863,7 @@ class BlockReceiver implements Closeable {
       throttler.throttle(len);
     }
     
-    return lastPacketInBlock?-1:len;
+    return lastPacketInBlock?-1:len; // 如果是最后一个Packet就返回-1，否则返回数据长度
   }
 
   /**
@@ -981,19 +983,20 @@ class BlockReceiver implements Closeable {
     this.isReplaceBlock = isReplaceBlock;
 
     try {
-      if (isClient && !isTransfer) {
+      if (isClient && !isTransfer) { // 对于由Client发起的操作要有多个应答线程
         responder = new Daemon(datanode.threadGroup, 
             new PacketResponder(replyOut, mirrIn, downstreams));
-        responder.start(); // start thread to processes responses
+        responder.start(); // start thread to processes responses 启动应答线程PacketResponder
       }
 
-      while (receivePacket() >= 0) { /* Receive until the last packet */ }
+      while (receivePacket() >= 0) { /* Receive until the last packet ，接收本块中的所有Packet */ }
 
       // wait for all outstanding packet responses. And then
       // indicate responder to gracefully shutdown.
       // Mark that responder has been closed for future processing
+      // 然后
       if (responder != null) {
-        ((PacketResponder)responder.getRunnable()).close();
+        ((PacketResponder)responder.getRunnable()).close(); // 关闭PaketResponder
         responderClosed = true;
       }
 
@@ -1003,12 +1006,12 @@ class BlockReceiver implements Closeable {
       if (isDatanode || isTransfer) {
         // Hold a volume reference to finalize block.
         try (ReplicaHandler handler = claimReplicaHandler()) {
-          // close the block/crc files
+          // close the block/crc files，关闭CRC校验文件
           close();
           block.setNumBytes(replicaInfo.getNumBytes());
 
           if (stage == BlockConstructionStage.TRANSFER_RBW) {
-            // for TRANSFER_RBW, convert temporary to RBW
+            // for TRANSFER_RBW, convert temporary to RBW，以供接力转发
             datanode.data.convertTemporaryToRbw(block);
           } else {
             // for isDatnode or TRANSFER_FINALIZED
@@ -1530,7 +1533,7 @@ class BlockReceiver implements Closeable {
       long endTime = 0;
       // Hold a volume reference to finalize block.
       try (ReplicaHandler handler = BlockReceiver.this.claimReplicaHandler()) {
-        BlockReceiver.this.close();
+        BlockReceiver.this.close(); // 关闭packetReceiver，断开本次连接
         endTime = ClientTraceLog.isInfoEnabled() ? System.nanoTime() : 0;
         block.setNumBytes(replicaInfo.getNumBytes());
         datanode.data.finalizeBlock(block, dirSyncOnFinalize);

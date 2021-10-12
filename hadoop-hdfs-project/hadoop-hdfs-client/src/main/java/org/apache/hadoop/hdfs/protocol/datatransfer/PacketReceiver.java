@@ -129,11 +129,11 @@ public class PacketReceiver implements Closeable {
     // DATA       the actual block data
     Preconditions.checkState(curHeader == null || !curHeader.isLastPacketInBlock());
 
-    curPacketBuf.clear();
-    curPacketBuf.limit(PacketHeader.PKT_LENGTHS_LEN);
-    doReadFully(ch, in, curPacketBuf);
-    curPacketBuf.flip();
-    int payloadLen = curPacketBuf.getInt();
+    curPacketBuf.clear(); // 清楚缓冲去原有的状态
+    curPacketBuf.limit(PacketHeader.PKT_LENGTHS_LEN); // 终点在PacketHeader之前
+    doReadFully(ch, in, curPacketBuf); // 第一次只是读入PacketHeader之前的部分
+    curPacketBuf.flip(); // 将缓冲区从写入翻转到读出状态
+    int payloadLen = curPacketBuf.getInt(); // 读取载荷长度
 
     if (payloadLen < Ints.BYTES) {
       // The "payload length" includes its own length. Therefore it
@@ -159,14 +159,14 @@ public class PacketReceiver implements Closeable {
     }
 
     // Make sure we have space for the whole packet, and
-    // read it.
+    // read it. 根据实际需要分配缓冲区
     reallocPacketBuf(PacketHeader.PKT_LENGTHS_LEN +
         dataPlusChecksumLen + headerLen);
     curPacketBuf.clear();
-    curPacketBuf.position(PacketHeader.PKT_LENGTHS_LEN);
+    curPacketBuf.position(PacketHeader.PKT_LENGTHS_LEN); // 以PacketHeader的起点为起点
     curPacketBuf.limit(PacketHeader.PKT_LENGTHS_LEN +
-        dataPlusChecksumLen + headerLen);
-    doReadFully(ch, in, curPacketBuf);
+        dataPlusChecksumLen + headerLen); // 终点按Packet长度
+    doReadFully(ch, in, curPacketBuf); // 第二次是读入PacketHeader以后的整个Packet
     curPacketBuf.flip();
     curPacketBuf.position(PacketHeader.PKT_LENGTHS_LEN);
 
@@ -186,11 +186,12 @@ public class PacketReceiver implements Closeable {
           dataPlusChecksumLen + " header: " + curHeader);
     }
 
-    reslicePacket(headerLen, checksumLen, curHeader.getDataLen());
+    reslicePacket(headerLen, checksumLen, curHeader.getDataLen()); // 切分Packet中的校验码和数据
   }
 
   /**
    * Rewrite the last-read packet on the wire to the given output stream.
+   * 将接收到的Packet通过另一个输出流写出
    */
   public void mirrorPacketTo(DataOutputStream mirrorOut) throws IOException {
     Preconditions.checkState(!useDirectBuffers,
@@ -203,9 +204,9 @@ public class PacketReceiver implements Closeable {
 
   private static void doReadFully(ReadableByteChannel ch, InputStream in,
       ByteBuffer buf) throws IOException {
-    if (ch != null) {
+    if (ch != null) { // 如果给定了ReadableByteChannel，就从这个通道读入
       readChannelFully(ch, buf);
-    } else {
+    } else { // 否则就从输入流读入
       Preconditions.checkState(!buf.isDirect(),
           "Must not use direct buffers with InputStream API");
       IOUtils.readFully(in, buf.array(),
@@ -215,6 +216,12 @@ public class PacketReceiver implements Closeable {
     }
   }
 
+  /**
+   * 切分Packet中的校验码和数据
+   * @param headerLen
+   * @param checksumsLen
+   * @param dataLen
+   */
   private void reslicePacket(
       int headerLen, int checksumsLen, int dataLen) {
     // Packet structure (refer to doRead() for details):
@@ -234,19 +241,19 @@ public class PacketReceiver implements Closeable {
       " rem=" + curPacketBuf.remaining();
 
     // Slice the checksums.
-    curPacketBuf.position(lenThroughHeader);
+    curPacketBuf.position(lenThroughHeader); // Slice the checksums，提取校验码部分
     curPacketBuf.limit(lenThroughChecksums);
     curChecksumSlice = curPacketBuf.slice();
 
     // Slice the data.
-    curPacketBuf.position(lenThroughChecksums);
+    curPacketBuf.position(lenThroughChecksums); // Slice the data,提取数据部分
     curPacketBuf.limit(lenThroughData);
     curDataSlice = curPacketBuf.slice();
 
     // Reset buffer to point to the entirety of the packet (including
     // length prefixes)
-    curPacketBuf.position(0);
-    curPacketBuf.limit(lenThroughData);
+    curPacketBuf.position(0); // 将指针恢复到缓冲去的开头
+    curPacketBuf.limit(lenThroughData); // 设置缓冲去的尽头
   }
 
 

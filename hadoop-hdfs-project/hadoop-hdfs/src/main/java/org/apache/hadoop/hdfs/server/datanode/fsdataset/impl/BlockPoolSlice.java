@@ -372,7 +372,7 @@ class BlockPoolSlice {
    * the block is finalized.
    */
   File createRbwFile(Block b) throws IOException {
-    File f = new File(rbwDir, b.getBlockName());
+    File f = new File(rbwDir, b.getBlockName()); // 在rbw目录下
     File rbwFile = DatanodeUtil.createFileWithExistsCheck(
         volume, b, f, fileIoProvider);
     // If any exception during creation, its expected that counter will not be

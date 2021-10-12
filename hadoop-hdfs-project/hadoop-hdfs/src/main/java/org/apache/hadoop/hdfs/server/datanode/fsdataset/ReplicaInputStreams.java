@@ -82,7 +82,7 @@ public class ReplicaInputStreams implements Closeable {
 
   public void readDataFully(byte[] buf, int off, int len)
       throws IOException {
-    IOUtils.readFully(dataIn, buf, off, len);
+    IOUtils.readFully(dataIn, buf, off, len); //
   }
 
   public void readChecksumFully(byte[] buf, int off, int len)

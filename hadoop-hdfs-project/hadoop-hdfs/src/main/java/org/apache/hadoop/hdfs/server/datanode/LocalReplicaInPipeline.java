@@ -285,7 +285,7 @@ public class LocalReplicaInPipeline extends LocalReplica
   @Override // ReplicaInPipeline
   public ReplicaOutputStreams createStreams(boolean isCreate,
       DataChecksum requestedChecksum) throws IOException {
-    final File blockFile = getBlockFile();
+    final File blockFile = getBlockFile(); // 注意，这个File是java.io.File,基本上只是路径名
     final File metaFile = getMetaFile();
     if (DataNode.LOG.isDebugEnabled()) {
       DataNode.LOG.debug("writeTo blockfile is " + blockFile +
