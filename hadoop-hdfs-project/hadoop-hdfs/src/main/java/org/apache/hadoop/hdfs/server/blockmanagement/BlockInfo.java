@@ -133,6 +133,11 @@ public abstract class BlockInfo extends Block
     };
   }
 
+  /**
+   * 进一步可获取所在节点的DatanodeDescriptor
+   * @param index
+   * @return
+   */
   public DatanodeDescriptor getDatanode(int index) {
     DatanodeStorageInfo storage = getStorageInfo(index);
     return storage == null ? null : storage.getDatanodeDescriptor();

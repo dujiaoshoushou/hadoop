@@ -1591,7 +1591,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       @Nonnull SlowDiskReports slowDisks)
           throws IOException {
     checkNNStartup();
-    verifyRequest(nodeReg);
+    verifyRequest(nodeReg); // 验证心跳来源的有效性
     return namesystem.handleHeartbeat(nodeReg, report,
         dnCacheCapacity, dnCacheUsed, xceiverCount, xmitsInProgress,
         failedVolumes, volumeFailureSummary, requestFullBlockReportLease,

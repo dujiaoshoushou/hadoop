@@ -75,10 +75,10 @@ import java.util.function.Consumer;
 public class DatanodeManager {
   static final Logger LOG = LoggerFactory.getLogger(DatanodeManager.class);
 
-  private final Namesystem namesystem;
-  private final BlockManager blockManager;
+  private final Namesystem namesystem; // 说到底，DatanodeManager是为文件系统服务的
+  private final BlockManager blockManager; // DataManager 是由BlockManager创建的，后者由FSNamesystem创建
   private final DatanodeAdminManager datanodeAdminManager;
-  private final HeartbeatManager heartbeatManager;
+  private final HeartbeatManager heartbeatManager; // 由DatanodeManager创建
   private final FSClusterStats fsClusterStats;
 
   private volatile long heartbeatIntervalSeconds;
@@ -101,13 +101,13 @@ public class DatanodeManager {
    * Mapping: StorageID -> DatanodeDescriptor
    */
   private final Map<String, DatanodeDescriptor> datanodeMap
-      = new HashMap<>();
+      = new HashMap<>(); // 给定一个StorageID，就可以查到其所在节点的DatanodeDescriptor
 
   /** Cluster network topology. */
   private final NetworkTopology networktopology;
 
   /** Host names to datanode descriptors mapping. */
-  private final Host2NodesMap host2DatanodeMap = new Host2NodesMap();
+  private final Host2NodesMap host2DatanodeMap = new Host2NodesMap(); // 可以根据节点名查找其DatanodeDescriptor
 
   private final DNSToSwitchMapping dnsToSwitchMapping;
   private final boolean rejectUnresolvedTopologyDN;
@@ -1663,30 +1663,32 @@ public class DatanodeManager {
       @Nonnull SlowDiskReports slowDisks) throws IOException {
     final DatanodeDescriptor nodeinfo;
     try {
-      nodeinfo = getDatanode(nodeReg);
+      nodeinfo = getDatanode(nodeReg); // nodeinfo来自DataNode的登记信息，来自DataNode的报告都带有这个信息
     } catch (UnregisteredNodeException e) {
       return new DatanodeCommand[]{RegisterCommand.REGISTER};
     }
 
     // Check if this datanode should actually be shutdown instead.
-    if (nodeinfo != null && nodeinfo.isDisallowed()) {
+    if (nodeinfo != null && nodeinfo.isDisallowed()) { // 节点已登记，但已禁用
       setDatanodeDead(nodeinfo);
       throw new DisallowedDatanodeException(nodeinfo);
     }
 
-    if (nodeinfo == null || !nodeinfo.isRegistered()) {
-      return new DatanodeCommand[]{RegisterCommand.REGISTER};
+    if (nodeinfo == null || !nodeinfo.isRegistered()) { // 如果DataNode尚未登记
+      return new DatanodeCommand[]{RegisterCommand.REGISTER}; // 就让其先登记在报告
     }
+    // DataNode已经登记，根据心跳报告更新有关具体DataNode的种种信息和统计
     heartbeatManager.updateHeartbeat(nodeinfo, reports, cacheCapacity,
         cacheUsed, xceiverCount, failedVolumes, volumeFailureSummary);
 
     // If we are in safemode, do not send back any recovery / replication
     // requests. Don't even drain the existing queue of work.
+    // 是SafeMode就返回一个空DatanodeCommand数组，对DataNode没有命令，不是SafeMode，准备要发送给DataNode的命令
     if (namesystem.isInSafeMode()) {
       return new DatanodeCommand[0];
     }
 
-    // block recovery command
+    // block recovery command 发送需要恢复原状的数据块列表
     final BlockRecoveryCommand brCommand = getBlockRecoveryCommand(blockPoolId,
         nodeinfo);
     if (brCommand != null) {

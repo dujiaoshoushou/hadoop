@@ -320,7 +320,7 @@ public class BlockManager implements BlockStatsMXBean {
    * Mapping: Block {@literal ->} { BlockCollection, datanodes, self ref }
    * Updated only in response to client-sent information.
    */
-  final BlocksMap blocksMap;
+  final BlocksMap blocksMap; // 给定一个Block对象，就可找到其相应的BlockInfo对象
 
   /** Redundancy thread. */
   private final Daemon redundancyThread = new Daemon(new RedundancyMonitor());
@@ -340,14 +340,14 @@ public class BlockManager implements BlockStatsMXBean {
   /**
    * Store blocks {@literal ->} datanodedescriptor(s) map of corrupt replicas.
    */
-  final CorruptReplicasMap corruptReplicas = new CorruptReplicasMap();
+  final CorruptReplicasMap corruptReplicas = new CorruptReplicasMap(); // 已损坏复份的集合，给定一个Block，可以找到其损坏的复份在哪些节点上，以及损坏的原因
 
   /**
    * Blocks to be invalidated.
    * For a striped block to invalidate, we should track its individual internal
    * blocks.
    */
-  private final InvalidateBlocks invalidateBlocks;
+  private final InvalidateBlocks invalidateBlocks; // 需要从DataNode上注销的复份，给定一个DataNodeInfo，可以查到该节点上哪些块（复份）需被注销
   
   /**
    * After a failover, over-replicated blocks may not be handled
@@ -357,7 +357,7 @@ public class BlockManager implements BlockStatsMXBean {
    * when the failover happened.
    */
   private final Set<Block> postponedMisreplicatedBlocks =
-      new LinkedHashSet<Block>();
+      new LinkedHashSet<Block>(); // 用于NameNode到换时的处理
   private final int blocksPerPostpondedRescan;
   private final ArrayList<Block> rescannedMisreplicatedBlocks;
 
@@ -366,7 +366,7 @@ public class BlockManager implements BlockStatsMXBean {
    * DataNode. We'll eventually remove these extras.
    */
   private final ExcessRedundancyMap excessRedundancyMap =
-      new ExcessRedundancyMap();
+      new ExcessRedundancyMap(); //
 
   /**
    * Store set of Blocks that need to be replicated 1 or more times.
@@ -2643,7 +2643,7 @@ public class BlockManager implements BlockStatsMXBean {
       long cacheCapacity, long cacheUsed, int xceiverCount, int failedVolumes,
       VolumeFailureSummary volumeFailureSummary) {
 
-    for (StorageReport report: reports) {
+    for (StorageReport report: reports) { // 对于心跳报告中关于每一个存储设备的报告
       providedStorageMap.updateStorage(node, report.getStorage());
     }
     node.updateHeartbeat(reports, cacheCapacity, cacheUsed, xceiverCount,

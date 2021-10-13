@@ -21,13 +21,13 @@ package org.apache.hadoop.hdfs.server.protocol;
  * Utilization report for a Datanode storage
  */
 public class StorageReport {
-  private final DatanodeStorage storage;
-  private final boolean failed;
-  private final long capacity;
-  private final long dfsUsed;
-  private final long nonDfsUsed;
-  private final long remaining;
-  private final long blockPoolUsed;
+  private final DatanodeStorage storage; // 一个DatanodeStorage对象
+  private final boolean failed; // 设备是否失败
+  private final long capacity; // 设备（文件卷）容量
+  private final long dfsUsed; // 已由HDFS用去的容量
+  private final long nonDfsUsed; // 剩余容量
+  private final long remaining; // 剩余容量
+  private final long blockPoolUsed; // 由这个BlockBool用去的容量
 
   public static final StorageReport[] EMPTY_ARRAY = {};
 

@@ -61,7 +61,7 @@ class HeartbeatManager implements DatanodeStatistics {
    * and removes them from the list.
    * It is synchronized by the heartbeat manager lock.
    */
-  private final List<DatanodeDescriptor> datanodes = new ArrayList<>();
+  private final List<DatanodeDescriptor> datanodes = new ArrayList<>(); // 作用跟datanodeMap相似，但这是有先后次序的
 
   /** Statistics, which are synchronized by the heartbeat manager lock. */
   private final DatanodeStats stats = new DatanodeStats();
@@ -69,7 +69,7 @@ class HeartbeatManager implements DatanodeStatistics {
   /** The time period to check for expired datanodes. */
   private final long heartbeatRecheckInterval;
   /** Heartbeat monitor thread. */
-  private final Daemon heartbeatThread = new Daemon(new Monitor());
+  private final Daemon heartbeatThread = new Daemon(new Monitor()); // 心跳线程
   private final StopWatch heartbeatStopWatch = new StopWatch();
 
   final Namesystem namesystem;
@@ -232,6 +232,10 @@ class HeartbeatManager implements DatanodeStatistics {
     return datanodes.toArray(new DatanodeDescriptor[datanodes.size()]);
   }
 
+  /**
+   * 将一DataNode加入datanodes这个List中
+   * @param d
+   */
   synchronized void addDatanode(final DatanodeDescriptor d) {
     // update in-service node count
     datanodes.add(d);
@@ -251,11 +255,21 @@ class HeartbeatManager implements DatanodeStatistics {
     }
   }
 
+  /**
+   * 根据心跳报告的内容更新关于该DataNode的记载
+   * @param node
+   * @param reports
+   * @param cacheCapacity
+   * @param cacheUsed
+   * @param xceiverCount
+   * @param failedVolumes
+   * @param volumeFailureSummary
+   */
   synchronized void updateHeartbeat(final DatanodeDescriptor node,
       StorageReport[] reports, long cacheCapacity, long cacheUsed,
       int xceiverCount, int failedVolumes,
       VolumeFailureSummary volumeFailureSummary) {
-    stats.subtract(node);
+    stats.subtract(node); // 先从统计信息中减去该减的
     blockManager.updateHeartbeat(node, reports, cacheCapacity, cacheUsed,
         xceiverCount, failedVolumes, volumeFailureSummary);
     stats.add(node);

@@ -60,6 +60,10 @@ import org.slf4j.LoggerFactory;
  * This class extends the DatanodeInfo class with ephemeral information (eg
  * health, capacity, what blocks are associated with the Datanode) that is
  * private to the Namenode, ie this class is not exposed to clients.
+ * 此类扩展了 DatanodeInfo 类，
+ * 其中包含 Namenode 私有的临时信息（例如*健康、容量、与 Datanode 相关联的块），
+ * 即此类不公开给客户端。
+ * 代表一个DataNode，这是在NameNode上
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -69,12 +73,14 @@ public class DatanodeDescriptor extends DatanodeInfo {
   public static final DatanodeDescriptor[] EMPTY_ARRAY = {};
   private static final int BLOCKS_SCHEDULED_ROLL_INTERVAL = 600*1000; //10min
 
-  /** Block and targets pair */
+  /** Block and targets pair
+   * 块及其目标存放地点，由一对block和targets构成
+   * */
   @InterfaceAudience.Private
   @InterfaceStability.Evolving
   public static class BlockTargetPair {
-    public final Block block;
-    public final DatanodeStorageInfo[] targets;    
+    public final Block block; // 对于这个块的简单描述
+    public final DatanodeStorageInfo[] targets;    // 复制这个块的若干目标地点，每个目标包括下列信息
 
     BlockTargetPair(Block block, DatanodeStorageInfo[] targets) {
       this.block = block;
@@ -82,7 +88,9 @@ public class DatanodeDescriptor extends DatanodeInfo {
     }
   }
 
-  /** A BlockTargetPair queue. */
+  /** A BlockTargetPair queue.
+   * 队列中的每个元素都是个BlockTargetPair
+   * */
   private static class BlockQueue<E> {
     private final Queue<E> blockq = new LinkedList<>();
 
@@ -157,6 +165,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
 
   /**
    * The blocks which we want to cache on this DataNode.
+   * 需要让该DN节点内存中的块的清单
    */
   private final CachedBlocksList pendingCached = 
       new CachedBlocksList(this, CachedBlocksList.Type.PENDING_CACHED);
@@ -164,12 +173,14 @@ public class DatanodeDescriptor extends DatanodeInfo {
   /**
    * The blocks which we know are cached on this datanode.
    * This list is updated by periodic cache reports.
+   * 缓存在该DN节点内存中的块的清单
    */
   private final CachedBlocksList cached = 
       new CachedBlocksList(this, CachedBlocksList.Type.CACHED);
 
   /**
    * The blocks which we want to uncache on this DataNode.
+   * 需要让该DN节点解除缓存的块的清单
    */
   private final CachedBlocksList pendingUncached = 
       new CachedBlocksList(this, CachedBlocksList.Type.PENDING_UNCACHED);
@@ -194,15 +205,22 @@ public class DatanodeDescriptor extends DatanodeInfo {
   // specified datanode, this value will be set back to 0.
   private long bandwidth;
 
-  /** A queue of blocks to be replicated by this datanode */
+  /** A queue of blocks to be replicated by this datanode
+   * 队列中的每个元素都是个BlockTargetPair
+   * 每个元素都是需要从这个节点复制到别的节点以增添复份的块及其目标节点
+   * */
   private final BlockQueue<BlockTargetPair> replicateBlocks =
       new BlockQueue<>();
   /** A queue of blocks to be erasure coded by this datanode */
   private final BlockQueue<BlockECReconstructionInfo> erasurecodeBlocks =
       new BlockQueue<>();
-  /** A queue of blocks to be recovered by this datanode */
+  /** A queue of blocks to be recovered by this datanode
+   * 需要复原状的块
+   * */
   private final BlockQueue<BlockInfo> recoverBlocks = new BlockQueue<>();
-  /** A set of blocks to be invalidated by this datanode */
+  /** A set of blocks to be invalidated by this datanode
+   * 需要从这个DN上撤销复份的块
+   * */
   private final LightWeightHashSet<Block> invalidateBlocks =
       new LightWeightHashSet<>();
 
@@ -446,7 +464,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
       }
     }
 
-    setCacheCapacity(cacheCapacity);
+    setCacheCapacity(cacheCapacity); // 根据DataNode的报告设置其缓存容量
     setCacheUsed(cacheUsed);
     setXceiverCount(xceiverCount);
     this.volumeFailures = volFailures;

@@ -46,9 +46,9 @@ public class DatanodeStorage {
     FAILED
   }
 
-  private final String storageID;
-  private final State state;
-  private final StorageType storageType;
+  private final String storageID; // 存储设备的ID
+  private final State state; // 状态 NORMAL READ_ONLY_SHARED FAILED
+  private final StorageType storageType; // 存储类型，DISK ,RAM_DISK,SSD 等
   private static final String STORAGE_ID_PREFIX = "DS-";
 
   /**

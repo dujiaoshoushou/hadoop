@@ -35,6 +35,7 @@ import com.google.common.annotations.VisibleForTesting;
 /**
  * A Datanode has one or more storages. A storage in the Datanode is represented
  * by this class.
+ * 代表着DataNode上的一个存储设备
  */
 public class DatanodeStorageInfo {
   public static final DatanodeStorageInfo[] EMPTY_ARRAY = {};
@@ -92,9 +93,9 @@ public class DatanodeStorageInfo {
   private StorageType storageType;
   private State state;
 
-  private long capacity;
-  private long dfsUsed;
-  private long nonDfsUsed;
+  private long capacity; // 该设备的容量
+  private long dfsUsed; // 已用去容量
+  private long nonDfsUsed; // 尚存容量
   private volatile long remaining;
   private long blockPoolUsed;
 
