@@ -33,7 +33,10 @@ import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
  * the DataNode to either invalidate a set of indicated
  * blocks, or to copy a set of indicated blocks to 
  * another DataNode.
- * 
+ * BlockCommand 是对数据节点的指令
+ * 关于其控制下的某些块。它告诉
+ * DataNode 要么使一组指示的块无效，
+ * 要么将一组指示的块复制到另一个 DataNode
  ****************************************************/
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -48,15 +51,16 @@ public class BlockCommand extends DatanodeCommand {
    */
   public static final long NO_ACK = Long.MAX_VALUE;
   
-  final String poolId;
-  final Block[] blocks;
-  final DatanodeInfo[][] targets;
-  final StorageType[][] targetStorageTypes;
-  final String[][] targetStorageIDs;
+  final String poolId; // BlockPool的Id
+  final Block[] blocks; // 一组数据块描述
+  final DatanodeInfo[][] targets; // 各数据块复份的目标节点，也需要增添多个复份
+  final StorageType[][] targetStorageTypes; // 各数据块复份的存储类型
+  final String[][] targetStorageIDs; // 各数据块复份的存储设备Id
 
   /**
    * Create BlockCommand for transferring blocks to another datanode
-   * @param blocktargetlist    blocks to be transferred 
+   * @param blocktargetlist    blocks to be transferred
+   * 构造方法，用于DATA_TRANSFER
    */
   public BlockCommand(int action, String poolId,
       List<BlockTargetPair> blocktargetlist) {
@@ -83,6 +87,7 @@ public class BlockCommand extends DatanodeCommand {
   /**
    * Create BlockCommand for the given action
    * @param blocks blocks related to the action
+   * 构造方法用于DNA_INVALIDATE
    */
   public BlockCommand(int action, String poolId, Block blocks[]) {
     this(action, poolId, blocks, EMPTY_TARGET_DATANODES,

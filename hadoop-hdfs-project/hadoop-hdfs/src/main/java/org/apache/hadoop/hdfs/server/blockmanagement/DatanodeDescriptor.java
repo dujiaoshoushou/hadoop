@@ -731,7 +731,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
   }
 
   List<BlockTargetPair> getReplicationCommand(int maxTransfers) {
-    return replicateBlocks.poll(maxTransfers);
+    return replicateBlocks.poll(maxTransfers); // replicateBlocks队列就是需要添加的队列
   }
 
   public List<BlockECReconstructionInfo> getErasureCodeCommand(
@@ -740,7 +740,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
   }
 
   public BlockInfo[] getLeaseRecoveryCommand(int maxTransfers) {
-    List<BlockInfo> blocks = recoverBlocks.poll(maxTransfers);
+    List<BlockInfo> blocks = recoverBlocks.poll(maxTransfers); // 获取需要恢复原状的数据块列表
     if(blocks == null)
       return null;
     return blocks.toArray(new BlockInfo[blocks.size()]);

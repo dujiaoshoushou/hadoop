@@ -1571,7 +1571,7 @@ public class DatanodeManager {
     if (blocks == null) {
       return null;
     }
-    BlockRecoveryCommand brCommand = new BlockRecoveryCommand(blocks.length);
+    BlockRecoveryCommand brCommand = new BlockRecoveryCommand(blocks.length); // 有数据块需要恢复原状，加上恢复命令
     for (BlockInfo b : blocks) {
       BlockUnderConstructionFeature uc = b.getUnderConstructionFeature();
       if(uc == null) {
@@ -1632,19 +1632,19 @@ public class DatanodeManager {
     final long nowMs = monotonicNow();
     if (shouldSendCachingCommands &&
         ((nowMs - nodeinfo.getLastCachingDirectiveSentTimeMs()) >=
-            timeBetweenResendingCachingDirectivesMs)) {
+            timeBetweenResendingCachingDirectivesMs)) { // 有需要（在内存中）加以缓存的复份
       DatanodeCommand pendingCacheCommand = getCacheCommand(
           nodeinfo.getPendingCached(), DatanodeProtocol.DNA_CACHE,
-          blockPoolId);
+          blockPoolId); // 需要加以缓存的数据块
       if (pendingCacheCommand != null) {
-        cmds.add(pendingCacheCommand);
+        cmds.add(pendingCacheCommand); // 如果有家缓存要求就加到命令块中
         sendingCachingCommands = true;
       }
       DatanodeCommand pendingUncacheCommand = getCacheCommand(
           nodeinfo.getPendingUncached(), DatanodeProtocol.DNA_UNCACHE,
-          blockPoolId);
+          blockPoolId); // 需要接触缓存的数据块
       if (pendingUncacheCommand != null) {
-        cmds.add(pendingUncacheCommand);
+        cmds.add(pendingUncacheCommand); // 如果有去缓存要求就加到命令块中
         sendingCachingCommands = true;
       }
       if (sendingCachingCommands) {
@@ -1695,7 +1695,7 @@ public class DatanodeManager {
       return new DatanodeCommand[]{brCommand};
     }
 
-    final List<DatanodeCommand> cmds = new ArrayList<>();
+    final List<DatanodeCommand> cmds = new ArrayList<>(); // 创建一个命令块
     // Allocate _approximately_ maxTransfers pending tasks to DataNode.
     // NN chooses pending tasks based on the ratio between the lengths of
     // replication and erasure-coded block queues.
@@ -1711,7 +1711,7 @@ public class DatanodeManager {
         LOG.debug("Pending replication tasks: " + numReplicationTasks
             + " erasure-coded tasks: " + numECTasks);
       }
-      // check pending replication tasks
+      // check pending replication tasks，获取需要补充复份的数据库列表，注意这是一个BlockTargetPair的列表
       List<BlockTargetPair> pendingList = nodeinfo.getReplicationCommand(
           numReplicationTasks);
       if (pendingList != null && !pendingList.isEmpty()) {
@@ -1729,7 +1729,7 @@ public class DatanodeManager {
             iterator.remove();
           }
         }
-        if (!pendingList.isEmpty()) {
+        if (!pendingList.isEmpty()) { // 有数据块需要补充复份，加上传输复制的命令
           cmds.add(new BlockCommand(DatanodeProtocol.DNA_TRANSFER, blockPoolId,
               pendingList));
         }
@@ -1743,18 +1743,18 @@ public class DatanodeManager {
       }
     }
 
-    // check block invalidation
+    // check block invalidation 获取需要予以撤销的复份，这是个Block对象数组
     Block[] blks = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
-    if (blks != null) {
+    if (blks != null) { // 有需要撤销的数据块，加上撤销数据块复份的命令
       cmds.add(new BlockCommand(DatanodeProtocol.DNA_INVALIDATE, blockPoolId,
           blks));
     }
-    // cache commands
+    // cache commands 缓存块命令
     addCacheCommands(blockPoolId, nodeinfo, cmds);
-    // key update command
+    // key update command 如果有密钥的变动
     blockManager.addKeyUpdateCommand(cmds, nodeinfo);
 
-    // check for balancer bandwidth update
+    // check for balancer bandwidth update // 如果需要改变网络通信的带宽
     if (nodeinfo.getBalancerBandwidth() > 0) {
       cmds.add(new BalancerBandwidthCommand(nodeinfo.getBalancerBandwidth()));
       // set back to 0 to indicate that datanode has been sent the new value
@@ -1785,10 +1785,10 @@ public class DatanodeManager {
       slowDiskTracker.checkAndUpdateReportIfNecessary();
     }
 
-    if (!cmds.isEmpty()) {
+    if (!cmds.isEmpty()) { // cmds非空，将其转换成一个DatanodeCommand数组并返回
       return cmds.toArray(new DatanodeCommand[cmds.size()]);
     }
-
+    // cmds空，就返回一个空DatanodeCommand数组
     return new DatanodeCommand[0];
   }
 

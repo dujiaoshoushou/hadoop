@@ -31,7 +31,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public abstract class ServerCommand {
-  private final int action;
+  private final int action; // 抽象类ServerCommand只含有一个Action代码
 
   /**
    * Create a command for the specified action.
