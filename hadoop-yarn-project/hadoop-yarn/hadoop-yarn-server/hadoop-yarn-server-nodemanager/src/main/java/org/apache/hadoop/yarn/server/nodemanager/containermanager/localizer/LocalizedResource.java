@@ -58,7 +58,7 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
 
   volatile Path localPath;
   volatile long size = -1;
-  final LocalResourceRequest rsrc;
+  final LocalResourceRequest rsrc; // 具体本地资源请求，LocalizedResource对象就是为此而建的
   final Dispatcher dispatcher;
   final StateMachine<ResourceState,ResourceEventType,ResourceEvent>
     stateMachine;
@@ -96,18 +96,18 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
         ResourceEventType.REQUEST, new LocalizedResourceTransition())
     .addTransition(ResourceState.LOCALIZED, ResourceState.LOCALIZED,
         ResourceEventType.RELEASE, new ReleaseTransition())
-    .installTopology();
+    .installTopology(); // 添加了很多跳变规则之后调用installTopology()
 
   public LocalizedResource(LocalResourceRequest rsrc, Dispatcher dispatcher) {
-    this.rsrc = rsrc;
-    this.dispatcher = dispatcher;
+    this.rsrc = rsrc; // 这是具体的资源请求
+    this.dispatcher = dispatcher; // 准备用于这个状态机的Dispatcher
     this.ref = new LinkedList<ContainerId>();
 
     ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    this.readLock = readWriteLock.readLock();
-    this.writeLock = readWriteLock.writeLock();
+    this.readLock = readWriteLock.readLock(); // 用来保护并发读操作的锁
+    this.writeLock = readWriteLock.writeLock(); // 用来保护并发写操作的锁
 
-    this.stateMachine = stateMachineFactory.make(this);
+    this.stateMachine = stateMachineFactory.make(this); // 生成状态机
   }
 
   public String toString() {
@@ -187,18 +187,18 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
 
   @Override
   public void handle(ResourceEvent event) {
-    this.writeLock.lock();
+    this.writeLock.lock(); // 加锁
     try {
-      Path resourcePath = event.getLocalResourceRequest().getPath();
+      Path resourcePath = event.getLocalResourceRequest().getPath(); // 文件路径
       LOG.debug("Processing {} of type {}", resourcePath, event.getType());
       ResourceState oldState = this.stateMachine.getCurrentState();
       ResourceState newState = null;
       try {
-        newState = this.stateMachine.doTransition(event.getType(), event);
+        newState = this.stateMachine.doTransition(event.getType(), event); // 获取状态机的当前状态
       } catch (InvalidStateTransitionException e) {
         LOG.error("Can't handle this event at current state", e);
       }
-      if (newState != null && oldState != newState) {
+      if (newState != null && oldState != newState) { // 如果发生状态变化就记入日志
         LOG.debug("Resource {}{} size : {} transitioned from {} to {}",
             resourcePath, (localPath != null ? "(->" + localPath + ")": ""),
             getSize(), oldState, newState);
@@ -222,13 +222,14 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
   private static class FetchResourceTransition extends ResourceTransition {
     @Override
     public void transition(LocalizedResource rsrc, ResourceEvent event) {
-      ResourceRequestEvent req = (ResourceRequestEvent) event;
-      LocalizerContext ctxt = req.getContext();
-      ContainerId container = ctxt.getContainerId();
-      rsrc.ref.add(container);
+      ResourceRequestEvent req = (ResourceRequestEvent) event; // 参数event实际上是个ResourceRequestEvent
+      LocalizerContext ctxt = req.getContext(); // 从中抽取LocalizerContext
+      ContainerId container = ctxt.getContainerId(); // 再从LocalizerContext中抽取ContainerId
+      rsrc.ref.add(container); // 将ContainerId加入LocalizedResource对象rsrc
+      // LocalizerResourceRequestEvent 创建（其实是重新构造）一个LocalizerResourceRequestEvent事件
       rsrc.dispatcher.getEventHandler().handle(
           new LocalizerResourceRequestEvent(rsrc, req.getVisibility(), ctxt, 
-              req.getLocalResourceRequest().getPattern()));
+              req.getLocalResourceRequest().getPattern())); // 并处理这个事件
     }
   }
 

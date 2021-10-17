@@ -39,7 +39,7 @@ import org.apache.hadoop.classification.InterfaceStability.Evolving;
  * @param <STATE> The state of the entity.
  * @param <EVENTTYPE> The external eventType to be handled.
  * @param <EVENT> The event object.
- *
+ * 状态机工厂
  */
 @Public
 @Evolving
@@ -47,11 +47,14 @@ final public class StateMachineFactory
              <OPERAND, STATE extends Enum<STATE>,
               EVENTTYPE extends Enum<EVENTTYPE>, EVENT> {
 
+  // 这是模板（Template）式类型定义，参数类型不同就有不同的StateMachineFactory
   private final TransitionsListNode transitionsListNode;
 
+  // 状态机的跳转总表，表中对于每个状态都有一个子表
   private Map<STATE, Map<EVENTTYPE,
     Transition<OPERAND, STATE, EVENTTYPE, EVENT>>> stateMachineTable;
 
+  // 状态机的默认初始状态
   private STATE defaultInitialState;
 
   private final boolean optimized;
@@ -223,12 +226,16 @@ final public class StateMachineFactory
    * @param postState post-transition state
    * @param eventType stimulus for the transition
    * @param hook transition hook
+   *             在当前StateMachineFactory的基础上添加单弧跳转规则
    */
   public StateMachineFactory
              <OPERAND, STATE, EVENTTYPE, EVENT>
           addTransition(STATE preState, STATE postState,
                         EVENTTYPE eventType,
                         SingleArcTransition<OPERAND, EVENT> hook){
+    // SingleInternalArc 创建一个指明目标状态和伴随操作的单弧
+    // ApplicableSingleOrMultipleTransition 创建包含此单弧的跳变规则
+    // StateMachineFactory 创建加上该规则的新StateMachineFactory
     return new StateMachineFactory<OPERAND, STATE, EVENTTYPE, EVENT>
         (this, new ApplicableSingleOrMultipleTransition<OPERAND, STATE, EVENTTYPE, EVENT>
            (preState, eventType, new SingleInternalArc(postState, hook)));
@@ -294,12 +301,12 @@ final public class StateMachineFactory
     //  maybeMakeStateMachineTable() when we build an InnerStateMachine ,
     //  and this code only gets called from inside a working InnerStateMachine .
     Map<EVENTTYPE, Transition<OPERAND, STATE, EVENTTYPE, EVENT>> transitionMap
-      = stateMachineTable.get(oldState);
+      = stateMachineTable.get(oldState); // 根据当前状态获取transitionMap
     if (transitionMap != null) {
       Transition<OPERAND, STATE, EVENTTYPE, EVENT> transition
-          = transitionMap.get(eventType);
+          = transitionMap.get(eventType); // 根据事件类型获取跳转规则，通常是一个SingleInternalArc对象
       if (transition != null) {
-        return transition.doTransition(operand, oldState, event, eventType);
+        return transition.doTransition(operand, oldState, event, eventType); // 调用该跳转规则的doTransition方法
       }
     }
     throw new InvalidStateTransitionException(oldState, eventType);
@@ -311,6 +318,9 @@ final public class StateMachineFactory
     }
   }
 
+  /**
+   * 生成跳转表
+   */
   private void makeStateMachineTable() {
     Stack<ApplicableTransition<OPERAND, STATE, EVENTTYPE, EVENT>> stack =
       new Stack<ApplicableTransition<OPERAND, STATE, EVENTTYPE, EVENT>>();
@@ -347,7 +357,7 @@ final public class StateMachineFactory
                     implements Transition<OPERAND, STATE, EVENTTYPE, EVENT> {
 
     private STATE postState;
-    private SingleArcTransition<OPERAND, EVENT> hook; // transition hook
+    private SingleArcTransition<OPERAND, EVENT> hook; // transition hook 操作挂钩
 
     SingleInternalArc(STATE postState,
         SingleArcTransition<OPERAND, EVENT> hook) {
@@ -359,9 +369,9 @@ final public class StateMachineFactory
     public STATE doTransition(OPERAND operand, STATE oldState,
                               EVENT event, EVENTTYPE eventType) {
       if (hook != null) {
-        hook.transition(operand, event);
+        hook.transition(operand, event); // 通过操作挂钩执行该跳变的transition函数
       }
-      return postState;
+      return postState; // 返回跳变后端状态，即本次跳变的目标
     }
   }
 
@@ -370,7 +380,7 @@ final public class StateMachineFactory
 
     // Fields
     private Set<STATE> validPostStates;
-    private MultipleArcTransition<OPERAND, EVENT, STATE> hook;  // transition hook
+    private MultipleArcTransition<OPERAND, EVENT, STATE> hook;  // transition hook 操作挂钩
 
     MultipleInternalArc(Set<STATE> postStates,
                    MultipleArcTransition<OPERAND, EVENT, STATE> hook) {
@@ -382,7 +392,7 @@ final public class StateMachineFactory
     public STATE doTransition(OPERAND operand, STATE oldState,
                               EVENT event, EVENTTYPE eventType)
         throws InvalidStateTransitionException {
-      STATE postState = hook.transition(operand, event);
+      STATE postState = hook.transition(operand, event); // 通过操作挂钩执行跳变的transition函数
 
       if (!validPostStates.contains(postState)) {
         throw new InvalidStateTransitionException(oldState, eventType);
@@ -399,6 +409,7 @@ final public class StateMachineFactory
    *                {@link StateMachine} will start.
    * @param listener An implementation of a {@link StateTransitionListener}.
    * @return A (@link StateMachine}.
+   * 生成一台针对具体应用的状态机
    */
   public StateMachine<STATE, EVENTTYPE, EVENT>
         make(OPERAND operand, STATE initialState,
@@ -495,6 +506,7 @@ final public class StateMachineFactory
    * Generate a graph represents the state graph of this StateMachine
    * @param name graph name
    * @return Graph object generated
+   * 生成代表着状态机的状态图
    */
   @SuppressWarnings("rawtypes")
   public Graph generateStateGraph(String name) {

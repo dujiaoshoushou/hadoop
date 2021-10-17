@@ -1603,15 +1603,15 @@ public class NameNodeRpcServer implements NamenodeProtocols {
         String poolId, final StorageBlockReport[] reports,
         final BlockReportContext context) throws IOException {
     checkNNStartup();
-    verifyRequest(nodeReg);
+    verifyRequest(nodeReg); // 验证对对方是否已经登记的DataNode，如果不是就抛出异常
     if(blockStateChangeLog.isDebugEnabled()) {
       blockStateChangeLog.debug("*BLOCK* NameNode.blockReport: "
            + "from " + nodeReg + ", reports.length=" + reports.length);
     }
-    final BlockManager bm = namesystem.getBlockManager(); 
+    final BlockManager bm = namesystem.getBlockManager(); // NameNode节点的BlockManager
     boolean noStaleStorages = false;
     try {
-      if (bm.checkBlockReportLease(context, nodeReg)) {
+      if (bm.checkBlockReportLease(context, nodeReg)) { //
         for (int r = 0; r < reports.length; r++) {
           final BlockListAsLongs blocks = reports[r].getBlocks();
           //
@@ -1639,7 +1639,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
         !namesystem.isRollingUpgrade() &&
         nn.isActiveState() &&
         noStaleStorages) {
-      return new FinalizeCommand(poolId);
+      return new FinalizeCommand(poolId); // 如条件符合就创建FinalizeCommand作为回应
     }
 
     return null;

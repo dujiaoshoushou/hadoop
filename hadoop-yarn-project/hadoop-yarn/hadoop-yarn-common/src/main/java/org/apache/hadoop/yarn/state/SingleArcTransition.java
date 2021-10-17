@@ -24,6 +24,7 @@ import org.apache.hadoop.classification.InterfaceStability.Evolving;
 /**
  * Hook for Transition. This lead to state machine to move to 
  * the post state as registered in the state machine.
+ * 挂钩过渡。这导致状态机移动到 * 在状态机中注册的后状态。
  */
 @Public
 @Evolving

@@ -45,7 +45,7 @@ import java.util.function.Consumer;
 @InterfaceAudience.LimitedPrivate({"HDFS", "MapReduce"})
 @InterfaceStability.Unstable
 public class NetworkTopology {
-  public final static String DEFAULT_RACK = "/default-rack";
+  public final static String DEFAULT_RACK = "/default-rack"; // 默认的机架节点名
   public static final Logger LOG =
       LoggerFactory.getLogger(NetworkTopology.class);
 
@@ -92,12 +92,13 @@ public class NetworkTopology {
   InnerNode.Factory factory;
   /**
    * the root cluster map
+   * 这是整个集群（局域网）的拓扑图
    */
   InnerNode clusterMap;
   /** Depth of all leaf nodes */
   private int depthOfAllLeaves = -1;
   /** rack counter */
-  protected int numOfRacks = 0;
+  protected int numOfRacks = 0; // 集群中共有几个机架
 
   /**
    * Whether or not this cluster has ever consisted of more than 1 rack,

@@ -37,9 +37,9 @@ public class InnerNodeImpl extends NodeBase implements InnerNode {
 
   static final Factory FACTORY = new Factory();
 
-  protected final List<Node> children = new ArrayList<>();
+  protected final List<Node> children = new ArrayList<>(); // 递归构成整个集群的拓扑
   protected final Map<String, Node> childrenMap = new HashMap<>();
-  protected int numOfLeaves;
+  protected int numOfLeaves; // 本子树有几个叶子节点
 
   /** Construct an InnerNode from a path-like string. */
   protected InnerNodeImpl(String path) {
@@ -117,6 +117,11 @@ public class InnerNodeImpl extends NodeBase implements InnerNode {
     return name;
   }
 
+  /**
+   * 由NetworkTopology.add() 函数调用
+   * @param n node to be added
+   * @return
+   */
   @Override
   public boolean add(Node n) {
     if (!isAncestor(n)) {

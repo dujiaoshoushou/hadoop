@@ -405,8 +405,9 @@ class BPServiceActor implements Runnable {
             NamespaceInfo.Capability.STORAGE_BLOCK_REPORT_BUFFERS);
     blockReportSizes.clear();
     try {
-      if (totalBlockCount < dnConf.blockReportSplitThreshold) {
+      if (totalBlockCount < dnConf.blockReportSplitThreshold) { // 如果可以容纳于一个报文中
         // Below split threshold, send all reports in a single message.
+        // 通过Namenode的proxy发送RPC请求，调用NameNode上的blockReport()
         DatanodeCommand cmd = bpNamenode.blockReport(
             bpRegistration, bpos.getBlockPoolId(), reports,
               new BlockReportContext(1, 0, reportId, fullBrLeaseId, true));
@@ -417,14 +418,14 @@ class BPServiceActor implements Runnable {
         if (cmd != null) {
           cmds.add(cmd);
         }
-      } else {
+      } else { // 如果不能容纳，就要分批发送
         // Send one block report per message.
         for (int r = 0; r < reports.length; r++) {
           StorageBlockReport singleReport[] = { reports[r] };
           DatanodeCommand cmd = bpNamenode.blockReport(
               bpRegistration, bpos.getBlockPoolId(), singleReport,
               new BlockReportContext(reports.length, r, reportId,
-                  fullBrLeaseId, true));
+                  fullBrLeaseId, true)); // 通过NameNode的proxy发送RPC请求，调用NameNode上的blockReport()
           blockReportSizes.add(
               calculateBlockReportPBSize(useBlocksBuffer, singleReport));
           numReportsSent++;
@@ -457,7 +458,7 @@ class BPServiceActor implements Runnable {
           ".");
     }
     scheduler.updateLastBlockReportTime(monotonicNow());
-    scheduler.scheduleNextBlockReport();
+    scheduler.scheduleNextBlockReport(); // 安排下次提供块报告的时间
     return cmds.size() == 0 ? null : cmds;
   }
 

@@ -55,7 +55,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
   private static final Marker FATAL =
       MarkerFactory.getMarker("FATAL");
 
-  private final BlockingQueue<Event> eventQueue;
+  private final BlockingQueue<Event> eventQueue; // 事件对象
   private volatile int lastEventQueueSizeLogged = 0;
   private volatile int lastEventDetailsQueueSizeLogged = 0;
   private volatile boolean stopped = false;
@@ -79,9 +79,9 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
   // For drainEventsOnStop enabled only, block newly coming events into the
   // queue while stopping.
   private volatile boolean blockNewEvents = false;
-  private final EventHandler<Event> handlerInstance = new GenericEventHandler();
+  private final EventHandler<Event> handlerInstance = new GenericEventHandler(); // 事件处理器
 
-  private Thread eventHandlingThread;
+  private Thread eventHandlingThread; // 事件处理线程
   protected final Map<Class<? extends Enum>, EventHandler> eventDispatchers;
   private boolean exitOnDispatchException = true;
 
@@ -109,6 +109,10 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
     dispatcherThreadName = dispatcherName;
   }
 
+  /**
+   * 事件处理线程的代码
+   * @return
+   */
   Runnable createThread() {
     return new Runnable() {
       @Override
@@ -127,7 +131,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
           }
           Event event;
           try {
-            event = eventQueue.take();
+            event = eventQueue.take(); // 从事件队列中取下一个事件
           } catch(InterruptedException ie) {
             if (!stopped) {
               LOG.warn("AsyncDispatcher thread interrupted", ie);
@@ -135,7 +139,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
             return;
           }
           if (event != null) {
-            dispatch(event);
+            dispatch(event); // 发起处理
             if (printTrigger) {
               //Log the latest dispatch event type
               // may cause the too many events queued
@@ -166,7 +170,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
   protected void serviceStart() throws Exception {
     //start all the components
     super.serviceStart();
-    eventHandlingThread = new Thread(createThread());
+    eventHandlingThread = new Thread(createThread()); // 创建事件处理线程
     eventHandlingThread.setName(dispatcherThreadName);
     eventHandlingThread.start();
   }
@@ -208,6 +212,10 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
     super.serviceStop();
   }
 
+  /**
+   * 发起处理一个事件
+   * @param event
+   */
   @SuppressWarnings("unchecked")
   protected void dispatch(Event event) {
     //all events go thru this loop
@@ -219,7 +227,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
     try{
       EventHandler handler = eventDispatchers.get(type);
       if(handler != null) {
-        handler.handle(event);
+        handler.handle(event); // 调用事件处理启动handle函数
       } else {
         throw new Exception("No handler for registered for " + type);
       }
@@ -262,6 +270,10 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
     }
   }
 
+  /**
+   * 获取本Dispatcher的事件处理器
+   * @return
+   */
   @Override
   public EventHandler<Event> getEventHandler() {
     return handlerInstance;

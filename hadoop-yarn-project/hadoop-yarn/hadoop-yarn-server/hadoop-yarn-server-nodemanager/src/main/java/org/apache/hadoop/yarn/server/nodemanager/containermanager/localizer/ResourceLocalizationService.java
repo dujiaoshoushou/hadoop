@@ -489,7 +489,7 @@ public class ResourceLocalizationService extends CompositeService
    */
   private void handleInitContainerResources(
       ContainerLocalizationRequestEvent rsrcReqs) {
-    Container c = rsrcReqs.getContainer();
+    Container c = rsrcReqs.getContainer(); // 从容器本地化请求"事件"中取得具体的容器
     EnumSet<ContainerState> set =
         EnumSet.of(ContainerState.LOCALIZING,
             ContainerState.RUNNING, ContainerState.REINITIALIZING);
@@ -503,15 +503,17 @@ public class ResourceLocalizationService extends CompositeService
         CacheBuilder.newBuilder().build(FSDownload.createStatusCacheLoader(getConfig()));
     LocalizerContext ctxt = new LocalizerContext(
         c.getUser(), c.getContainerId(), c.getCredentials(), statCache);
+    // 获取所请求的资源清单
     Map<LocalResourceVisibility, Collection<LocalResourceRequest>> rsrcs =
       rsrcReqs.getRequestedResources();
     for (Map.Entry<LocalResourceVisibility, Collection<LocalResourceRequest>> e :
          rsrcs.entrySet()) {
+      // 对于要求本地化的每种不同可见度的资源（资源集合中的每个二元组），tracker是个EventHandler
       LocalResourcesTracker tracker =
           getLocalResourcesTracker(e.getKey(), c.getUser(),
               c.getContainerId().getApplicationAttemptId()
                   .getApplicationId());
-      for (LocalResourceRequest req : e.getValue()) {
+      for (LocalResourceRequest req : e.getValue()) { // 对于其中的每项资源，调用EventHandler的handle()函数
         tracker.handle(new ResourceRequestEvent(req, e.getKey(), ctxt));
         LOG.debug("Localizing {} for container {}",
             req.getPath(), c.getContainerId());

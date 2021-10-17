@@ -28,7 +28,7 @@ public class ResourceRequestEvent extends ResourceEvent {
 
   public ResourceRequestEvent(LocalResourceRequest resource,
       LocalResourceVisibility vis, LocalizerContext context) {
-    super(resource, ResourceEventType.REQUEST);
+    super(resource, ResourceEventType.REQUEST); // 这就是对于状态机的一个触发条件
     this.vis = vis;
     this.context = context;
   }

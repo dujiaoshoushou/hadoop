@@ -1967,12 +1967,13 @@ public class BlockManager implements BlockStatsMXBean {
         }
       }
         // Choose the blocks to be reconstructed
+      // 按预计从中选取一组数据块加以计算
       blocksToReconstruct = neededReconstruction
           .chooseLowRedundancyBlocks(blocksToProcess, reset);
     } finally {
       namesystem.writeUnlock();
     }
-    return computeReconstructionWorkForBlocks(blocksToReconstruct);
+    return computeReconstructionWorkForBlocks(blocksToReconstruct); // 对这组数据快进行计算
   }
 
   /**
@@ -2727,8 +2728,8 @@ public class BlockManager implements BlockStatsMXBean {
         context != null ? Long.toHexString(context.getReportId()) : "";
 
     try {
-      node = datanodeManager.getDatanode(nodeID);
-      if (node == null || !node.isRegistered()) {
+      node = datanodeManager.getDatanode(nodeID); // 获取对方的DatanodeDescriptor
+      if (node == null || !node.isRegistered()) { // 如果DatanodeManager中没有对方的DatanodeDescriptor，或尚未登记，就抛出异常
         throw new IOException(
             "ProcessReport from dead or unregistered node: " + nodeID);
       }
@@ -2762,12 +2763,13 @@ public class BlockManager implements BlockStatsMXBean {
             strBlockReportId,
             storageInfo.getStorageID(),
             nodeID.getDatanodeUuid());
-        processFirstBlockReport(storageInfo, newReport);
+        processFirstBlockReport(storageInfo, newReport); // 对于存储设备上的第一个BlockReport的处理可以简化，效率较高
       } else {
         // Block reports for provided storage are not
         // maintained by DN heartbeats
+        //  提供的存储的块报告 不是由 DN 心跳维护
         if (!StorageType.PROVIDED.equals(storageInfo.getStorageType())) {
-          invalidatedBlocks = processReport(storageInfo, newReport, context);
+          invalidatedBlocks = processReport(storageInfo, newReport, context); // 获取无效的块列表
         }
       }
       storageInfo.receivedBlockReport();
@@ -2820,6 +2822,7 @@ public class BlockManager implements BlockStatsMXBean {
 
   /**
    * Rescan the list of blocks which were previously postponed.
+   * 重新扫描先前被推迟的块列表。
    */
   void rescanPostponedMisreplicatedBlocks() {
     if (getPostponedMisreplicatedBlocksCount() == 0) {
@@ -2830,21 +2833,21 @@ public class BlockManager implements BlockStatsMXBean {
     long startSize = postponedMisreplicatedBlocks.size();
     try {
       Iterator<Block> it = postponedMisreplicatedBlocks.iterator();
-      for (int i=0; i < blocksPerPostpondedRescan && it.hasNext(); i++) {
+      for (int i=0; i < blocksPerPostpondedRescan && it.hasNext(); i++) { // 对推迟处理队列汇总的每一个块
         Block b = it.next();
         it.remove();
 
         BlockInfo bi = getStoredBlock(b);
-        if (bi == null) {
+        if (bi == null) { // 如果blockMap中没有这个块
           LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
               "Postponed mis-replicated block {} no longer found " +
               "in block map.", b);
           continue;
         }
-        MisReplicationResult res = processMisReplicatedBlock(bi);
+        MisReplicationResult res = processMisReplicatedBlock(bi); // 确有其事，需要处理
         LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
             "Re-scanned block {}, result is {}", b, res);
-        if (res == MisReplicationResult.POSTPONE) {
+        if (res == MisReplicationResult.POSTPONE) { // 如果不再延迟
           rescannedMisreplicatedBlocks.add(b);
         }
       }
@@ -2898,21 +2901,22 @@ public class BlockManager implements BlockStatsMXBean {
     } else {
       sortedReport = report;
     }
-
+    // 对于具体存储设备报告中的每一个块，扫描该设备的storageInfo队列
+    // 看对于这个块是否需要执行添加（toAdd）、剩余（toRemove）等操作
     reportDiffSorted(storageInfo, sortedReport,
                      toAdd, toRemove, toInvalidate, toCorrupt, toUC);
 
 
     DatanodeDescriptor node = storageInfo.getDatanodeDescriptor();
-    // Process the blocks on each queue
+    // Process the blocks on each queue 对于toUC集合中的每一个块
     for (StatefulBlockInfo b : toUC) { 
       addStoredBlockUnderConstruction(b, storageInfo);
     }
-    for (BlockInfo b : toRemove) {
+    for (BlockInfo b : toRemove) { // 对于toRemove集合汇总的每一个块
       removeStoredBlock(b, node);
     }
     int numBlocksLogged = 0;
-    for (BlockInfoToAdd b : toAdd) {
+    for (BlockInfoToAdd b : toAdd) { // 对于toAdd集合汇总的每一个块
       addStoredBlock(b.stored, b.reported, storageInfo, null,
           numBlocksLogged < maxNumBlocksToLog);
       numBlocksLogged++;
@@ -2921,10 +2925,10 @@ public class BlockManager implements BlockStatsMXBean {
       blockLog.info("BLOCK* processReport 0x{}: logged info for {} of {} " +
           "reported.", strBlockReportId, maxNumBlocksToLog, numBlocksLogged);
     }
-    for (Block b : toInvalidate) {
+    for (Block b : toInvalidate) { // 对于需要在DataNode上加以注销的每一个块
       addToInvalidates(b, node);
     }
-    for (BlockToMarkCorrupt b : toCorrupt) {
+    for (BlockToMarkCorrupt b : toCorrupt) { // 对于需要被标注为损坏的每一个块
       markBlockAsCorrupt(b, storageInfo, node);
     }
 
@@ -2975,9 +2979,9 @@ public class BlockManager implements BlockStatsMXBean {
   /**
    * processFirstBlockReport is intended only for processing "initial" block
    * reports, the first block report received from a DN after it registers.
-   * It just adds all the valid replicas to the datanode, without calculating 
-   * a toRemove list (since there won't be any).  It also silently discards 
-   * any invalid blocks, thereby deferring their processing until 
+   * It just adds all the valid replicas to the datanode, without calculating
+   * a toRemove list (since there won't be any).  It also silently discards
+   * any invalid blocks, thereby deferring their processing until
    * the next block report.
    * @param storageInfo - DatanodeStorageInfo that sent the report
    * @param report - the initial block report, to be processed
@@ -3445,7 +3449,7 @@ public class BlockManager implements BlockStatsMXBean {
   throws IOException {
     assert block != null && namesystem.hasWriteLock();
     BlockInfo storedBlock;
-    DatanodeDescriptor node = storageInfo.getDatanodeDescriptor();
+    DatanodeDescriptor node = storageInfo.getDatanodeDescriptor(); // 这个存储设备所在的DataNode
     if (!block.isComplete()) {
       //refresh our copy in case the block got completed in another thread
       storedBlock = getStoredBlock(block);
@@ -3462,7 +3466,7 @@ public class BlockManager implements BlockStatsMXBean {
       return block;
     }
 
-    // add block to the datanode
+    // add block to the datanode 所谓加到这个DataNode，是指加到关于这个DataNode的记载中
     AddBlockResult result = storageInfo.addBlock(storedBlock, reportedBlock);
 
     int curReplicaDelta;
@@ -3481,6 +3485,9 @@ public class BlockManager implements BlockStatsMXBean {
       // if the same block is added again and the replica was corrupt
       // previously because of a wrong gen stamp, remove it from the
       // corrupt block list.
+      // 如果再次添加相同的块并且副本已损坏
+      // 之前由于错误的 gen 标记，请将其从
+      // 损坏的块列表中删除。
       corruptReplicas.removeFromCorruptReplicasMap(block, node,
           Reason.GENSTAMP_MISMATCH);
       curReplicaDelta = 0;
@@ -3489,16 +3496,16 @@ public class BlockManager implements BlockStatsMXBean {
           storedBlock.getNumBytes());
     }
 
-    // Now check for completion of blocks and safe block count
+    // Now check for completion of blocks and safe block count，数一下有几个节点存有气复份
     NumberReplicas num = countNodes(storedBlock);
-    int numLiveReplicas = num.liveReplicas();
+    int numLiveReplicas = num.liveReplicas(); // 这是其中已经可用的复份数量
     int pendingNum = pendingReconstruction.getNumReplicas(storedBlock);
-    int numCurrentReplica = numLiveReplicas + pendingNum;
+    int numCurrentReplica = numLiveReplicas + pendingNum; // 加上已在复制计划中的复份数量
     int numUsableReplicas = num.liveReplicas() +
         num.decommissioning() + num.liveEnteringMaintenanceReplicas();
 
     if(storedBlock.getBlockUCState() == BlockUCState.COMMITTED &&
-        hasMinStorage(storedBlock, numUsableReplicas)) {
+        hasMinStorage(storedBlock, numUsableReplicas)) { // 对尚处于UC阶段的块，其复份数量只要够上最低要求就行
       addExpectedReplicasToPending(storedBlock);
       completeBlock(storedBlock, null, false);
     } else if (storedBlock.isComplete() && result == AddBlockResult.ADDED) {
@@ -3523,6 +3530,7 @@ public class BlockManager implements BlockStatsMXBean {
     // handle low redundancy/extra redundancy
     short fileRedundancy = getExpectedRedundancyNum(storedBlock);
     if (!isNeededReconstruction(storedBlock, num, pendingNum)) {
+      // 如果算下来已经不需要在有更多复份，就从neededReplications队列中remove
       neededReconstruction.remove(storedBlock, numCurrentReplica,
           num.readOnlyReplicas(), num.outOfServiceReplicas(), fileRedundancy);
     } else {
@@ -3534,6 +3542,7 @@ public class BlockManager implements BlockStatsMXBean {
     }
     // If the file redundancy has reached desired value
     // we can remove any corrupt replicas the block may have
+    // 如果复份数量已达标，但有坏块，就去掉
     int corruptReplicasCount = corruptReplicas.numCorruptReplicas(storedBlock);
     int numCorruptNodes = num.corruptReplicas();
     if (numCorruptNodes != corruptReplicasCount) {
@@ -3542,7 +3551,7 @@ public class BlockManager implements BlockStatsMXBean {
           storedBlock, numCorruptNodes, corruptReplicasCount);
     }
     if ((corruptReplicasCount > 0) && (numLiveReplicas >= fileRedundancy)) {
-      invalidateCorruptReplicas(storedBlock, reportedBlock, num);
+      invalidateCorruptReplicas(storedBlock, reportedBlock, num); // 将其废除
     }
     return storedBlock;
   }
@@ -3790,6 +3799,8 @@ public class BlockManager implements BlockStatsMXBean {
    * Process a single possibly misreplicated block. This adds it to the
    * appropriate queues if necessary, and returns a result code indicating
    * what happened with it.
+   * 处理单个可能错误复制的块。如有必要，这会将它添加到
+   * 适当的队列，并返回一个结果代码，指示 它发生了什么。
    */
   private MisReplicationResult processMisReplicatedBlock(BlockInfo block) {
     if (block.isDeleted()) {
@@ -5046,13 +5057,13 @@ public class BlockManager implements BlockStatsMXBean {
       return 0;
     }
 
-    final int numlive = heartbeatManager.getLiveDatanodeCount();
+    final int numlive = heartbeatManager.getLiveDatanodeCount(); // 有几个活着（有心跳）的DataNode
     final int blocksToProcess = numlive
-        * this.blocksReplWorkMultiplier;
+        * this.blocksReplWorkMultiplier; // 本次预计处理多少个数据块
     final int nodesToProcess = (int) Math.ceil(numlive
-        * this.blocksInvalidateWorkPct);
+        * this.blocksInvalidateWorkPct); // 处理多少个节点
 
-    int workFound = this.computeBlockReconstructionWork(blocksToProcess);
+    int workFound = this.computeBlockReconstructionWork(blocksToProcess); // 计算复制哪些数据块
 
     // Update counters
     namesystem.writeLock();
@@ -5062,7 +5073,7 @@ public class BlockManager implements BlockStatsMXBean {
     } finally {
       namesystem.writeUnlock();
     }
-    workFound += this.computeInvalidateWork(nodesToProcess);
+    workFound += this.computeInvalidateWork(nodesToProcess); // 计算要废除哪些复份
     return workFound;
   }
 
