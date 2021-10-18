@@ -277,7 +277,7 @@ public class ClientRMService extends AbstractService implements
   @Override
   protected void serviceStart() throws Exception {
     Configuration conf = getConfig();
-    YarnRPC rpc = YarnRPC.create(conf);
+    YarnRPC rpc = YarnRPC.create(conf); // 实际上是HadoopYarnProtoRPC.create
     this.server =   
       rpc.getServer(ApplicationClientProtocol.class, this,
             clientBindAddress,

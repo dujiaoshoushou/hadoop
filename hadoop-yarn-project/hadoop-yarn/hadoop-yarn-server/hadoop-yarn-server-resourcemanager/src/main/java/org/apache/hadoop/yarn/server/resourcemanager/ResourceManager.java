@@ -184,7 +184,7 @@ public class ResourceManager extends CompositeService
    */
   @VisibleForTesting
   protected RMContextImpl rmContext;
-  private Dispatcher rmDispatcher;
+  private Dispatcher rmDispatcher; // 这是一个AsyncDispatcher
   @VisibleForTesting
   protected AdminService adminService;
 
@@ -199,18 +199,18 @@ public class ResourceManager extends CompositeService
   protected RMActiveServices activeServices;
   protected RMSecretManagerService rmSecretManagerService;
 
-  protected ResourceScheduler scheduler;
+  protected ResourceScheduler scheduler; // 资源调度器，有三种选择
   protected ReservationSystem reservationSystem;
   private ClientRMService clientRM;
-  protected ApplicationMasterService masterService;
+  protected ApplicationMasterService masterService; // 为现有的AM提供服务和管理
   protected NMLivelinessMonitor nmLivelinessMonitor;
   protected NodesListManager nodesListManager;
-  protected RMAppManager rmAppManager;
+  protected RMAppManager rmAppManager; // 管理已提交而尚未完成的App
   protected ApplicationACLsManager applicationACLsManager;
   protected QueueACLsManager queueACLsManager;
   private FederationStateStoreService federationStateStoreService;
   private ProxyCAManager proxyCAManager;
-  private WebApp webApp;
+  private WebApp webApp; // 提供作为webApp的网站服务
   private AppReportFetcher fetcher = null;
   protected ResourceTrackerService resourceTracker;
   private JvmMetrics jvmMetrics;
@@ -286,7 +286,7 @@ public class ResourceManager extends CompositeService
     // If security is not enabled, use current user
     this.rmLoginUGI = UserGroupInformation.getCurrentUser();
     try {
-      doSecureLogin();
+      doSecureLogin(); // 如果启用了安全机制，用户记得登录，此后便用实际用户的身份
     } catch(IOException ie) {
       throw new YarnRuntimeException("Failed to login", ie);
     }
@@ -311,6 +311,7 @@ public class ResourceManager extends CompositeService
     validateConfigs(this.conf);
 
     // register the handlers for all AlwaysOn services using setupDispatcher().
+    // 创建一个Dispatcher并将其设置成RM的Dispatcher
     rmDispatcher = setupDispatcher();
     addIfService(rmDispatcher);
     rmContext.setDispatcher(rmDispatcher);
@@ -320,7 +321,7 @@ public class ResourceManager extends CompositeService
     // As elector service needs admin service to be initialized and started,
     // first we add admin service then elector service
 
-    adminService = createAdminService();
+    adminService = createAdminService(); // 创建系统管理服务
     addService(adminService);
     rmContext.setRMAdminService(adminService);
 
@@ -335,7 +336,7 @@ public class ResourceManager extends CompositeService
         rmContext.setLeaderElectorService(elector);
       }
     }
-
+    // 创建许多的service并放进上面的serviceList中
     createAndInitActiveServices(false);
 
     webAppAddress = WebAppUtils.getWebAppBindURL(this.conf,
@@ -457,12 +458,14 @@ public class ResourceManager extends CompositeService
   }
 
   protected ResourceScheduler createScheduler() {
+    // 从conf文件获取调度器类名
     String schedulerClassName = conf.get(YarnConfiguration.RM_SCHEDULER,
         YarnConfiguration.DEFAULT_RM_SCHEDULER);
     LOG.info("Using Scheduler: " + schedulerClassName);
     try {
       Class<?> schedulerClazz = Class.forName(schedulerClassName);
       if (ResourceScheduler.class.isAssignableFrom(schedulerClazz)) {
+        // 创建调度器
         return (ResourceScheduler) ReflectionUtils.newInstance(schedulerClazz,
             this.conf);
       } else {
@@ -675,11 +678,11 @@ public class ResourceManager extends CompositeService
       containerAllocationExpirer = new ContainerAllocationExpirer(rmDispatcher);
       addService(containerAllocationExpirer);
       rmContext.setContainerAllocationExpirer(containerAllocationExpirer);
-
+      // 用来监视各AM是否存活
       AMLivelinessMonitor amLivelinessMonitor = createAMLivelinessMonitor();
       addService(amLivelinessMonitor);
       rmContext.setAMLivelinessMonitor(amLivelinessMonitor);
-
+      // 用来监视各AM是否已完成使命
       AMLivelinessMonitor amFinishingMonitor = createAMLivelinessMonitor();
       addService(amFinishingMonitor);
       rmContext.setAMFinishingMonitor(amFinishingMonitor);
@@ -687,7 +690,7 @@ public class ResourceManager extends CompositeService
       RMAppLifetimeMonitor rmAppLifetimeMonitor = createRMAppLifetimeMonitor();
       addService(rmAppLifetimeMonitor);
       rmContext.setRMAppLifetimeMonitor(rmAppLifetimeMonitor);
-
+      // 创建RMNodeLabelsManager
       RMNodeLabelsManager nlm = createNodeLabelManager();
       nlm.setRMContext(rmContext);
       addService(nlm);
@@ -730,6 +733,7 @@ public class ResourceManager extends CompositeService
 
       RMStateStore rmStore = null;
       if (recoveryEnabled) {
+        // 创建RMStateStore，以保存各种副本
         rmStore = RMStateStoreFactory.getStore(conf);
         boolean isWorkPreservingRecoveryEnabled =
             conf.getBoolean(
@@ -759,19 +763,22 @@ public class ResourceManager extends CompositeService
       }
 
       // Register event handler for NodesListManager
+      // 用户管理NM节点状态清单
       nodesListManager = new NodesListManager(rmContext);
       rmDispatcher.register(NodesListManagerEventType.class, nodesListManager);
       addService(nodesListManager);
       rmContext.setNodesListManager(nodesListManager);
 
       // Initialize the scheduler
+      // 创建资源调度器
       scheduler = createScheduler();
       scheduler.setRMContext(rmContext);
       addIfService(scheduler);
       rmContext.setScheduler(scheduler);
-
+      // 创建调度器专用的Dispatcher
       schedulerDispatcher = createSchedulerEventDispatcher();
       addIfService(schedulerDispatcher);
+      // 创建三种Dispatch目标对象（接受来自RM的事件），并向RM的Dispatcher登记
       rmDispatcher.register(SchedulerEventType.class, schedulerDispatcher);
 
       // Register event handler for RmAppEvents
@@ -785,10 +792,10 @@ public class ResourceManager extends CompositeService
       // Register event handler for RmNodes
       rmDispatcher.register(
           RMNodeEventType.class, new NodeEventDispatcher(rmContext));
-
+      // 用来监视NodeManager的存活
       nmLivelinessMonitor = createNMLivelinessMonitor();
       addService(nmLivelinessMonitor);
-
+      // 用来跟踪资源的使用
       resourceTracker = createResourceTrackerService();
       addService(resourceTracker);
       rmContext.setResourceTrackerService(resourceTracker);
@@ -798,6 +805,7 @@ public class ResourceManager extends CompositeService
         JvmMetrics.reattach(ms, jvmMetrics);
         UserGroupInformation.reattachMetrics();
       } else {
+        // 保证统计信息中自由一个RMNodeLabelsManager
         jvmMetrics = JvmMetrics.initSingleton("ResourceManager", null);
       }
 
@@ -816,7 +824,7 @@ public class ResourceManager extends CompositeService
           LOG.info("Initialized Reservation system");
         }
       }
-
+      // 用来为NM节点上的AM提供服务
       masterService = createApplicationMasterService();
       createAndRegisterOpportunisticDispatcher(masterService);
       addService(masterService) ;
@@ -826,15 +834,15 @@ public class ResourceManager extends CompositeService
       applicationACLsManager = new ApplicationACLsManager(conf);
 
       queueACLsManager = createQueueACLsManager(scheduler, conf);
-
+      // 用来管理AM
       rmAppManager = createRMAppManager();
       // Register event handler for RMAppManagerEvents
       rmDispatcher.register(RMAppManagerEventType.class, rmAppManager);
-
+      // 用来为客户提供资源服务
       clientRM = createClientRMService();
       addService(clientRM);
       rmContext.setClientRMService(clientRM);
-
+      // 用来在NM节点上启动运行AM
       applicationMasterLauncher = createAMLauncher();
       rmDispatcher.register(AMLauncherEventType.class,
           applicationMasterLauncher);
@@ -1147,10 +1155,11 @@ public class ResourceManager extends CompositeService
     @Override
     public void handle(RMNodeEvent event) {
       NodeId nodeId = event.getNodeId();
+      // RMNode是界面，RMNodeImpl实现了RMNode和EventHandler两个界面
       RMNode node = this.rmContext.getRMNodes().get(nodeId);
       if (node != null) {
         try {
-          ((EventHandler<RMNodeEvent>) node).handle(event);
+          ((EventHandler<RMNodeEvent>) node).handle(event); // 操作RMNodeImpl的状态机，调用其doTransition()
         } catch (Throwable t) {
           LOG.error("Error in handling event type " + event.getType()
               + " for node " + nodeId, t);
@@ -1581,7 +1590,7 @@ public class ResourceManager extends CompositeService
         ShutdownHookManager.get().addShutdownHook(
           new CompositeServiceShutdownHook(resourceManager),
           SHUTDOWN_HOOK_PRIORITY);
-        resourceManager.init(conf);
+        resourceManager.init(conf); // 这会调用super.init(),然后回过来调用这里的serviceInit()
         resourceManager.start();
       }
     } catch (Throwable t) {
