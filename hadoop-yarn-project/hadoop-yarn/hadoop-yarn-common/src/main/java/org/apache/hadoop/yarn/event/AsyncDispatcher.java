@@ -253,7 +253,7 @@ public class AsyncDispatcher extends AbstractService implements Dispatcher {
     /* check to see if we have a listener registered */
     EventHandler<Event> registeredHandler = (EventHandler<Event>)
     eventDispatchers.get(eventType);
-    LOG.info("Registering " + eventType + " for " + handler.getClass());
+    LOG.info("Registering " + eventType + " for " + handleir.getClass());
     if (registeredHandler == null) {
       eventDispatchers.put(eventType, handler);
     } else if (!(registeredHandler instanceof MultiListenerHandler)){

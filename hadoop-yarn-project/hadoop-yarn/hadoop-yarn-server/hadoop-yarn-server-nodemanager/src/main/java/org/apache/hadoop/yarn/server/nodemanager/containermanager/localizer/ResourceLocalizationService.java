@@ -780,7 +780,7 @@ public class ResourceLocalizationService extends CompositeService
       case REQUEST_RESOURCE_LOCALIZATION:
         // 0) find running localizer or start new thread
         LocalizerResourceRequestEvent req =
-          (LocalizerResourceRequestEvent)event;
+          (LocalizerResourceRequestEvent)event; // 被当成LocalizerEvent的event还原成LocalizerResourceRequestEvent
         switch (req.getVisibility()) {
         case PUBLIC:
           publicLocalizer.addResource(req);
@@ -809,7 +809,7 @@ public class ResourceLocalizationService extends CompositeService
                 break;
               }
               LOG.info("Created localizer for " + locId);
-              localizer = new LocalizerRunner(req.getContext(), locId);
+              localizer = new LocalizerRunner(req.getContext(), locId); // 这里是一个线程，负责实施资源本地化
               privLocalizers.put(locId, localizer);
               localizer.start();
             }
