@@ -115,32 +115,32 @@ public class ValueAggregatorJob {
   public static JobConf createValueAggregatorJob(String args[], Class<?> caller)
     throws IOException {
 
-    Configuration conf = new Configuration();
+    Configuration conf = new Configuration(); // 创建一个Configuration类对象conf
     
     GenericOptionsParser genericParser 
-      = new GenericOptionsParser(conf, args);
-    args = genericParser.getRemainingArgs();
+      = new GenericOptionsParser(conf, args); // 用来解析命令行参数，其中args[0]是应用的类名本身
+    args = genericParser.getRemainingArgs(); // 获取命令行中其余的参数（除args[0]以外）
     
-    if (args.length < 2) {
+    if (args.length < 2) { // 后面至少还要有两个参数，即输入目录和输出目录
       System.out.println("usage: inputDirs outDir "
           + "[numOfReducer [textinputformat|seq [specfile [jobName]]]]");
       GenericOptionsParser.printGenericCommandUsage(System.out);
       System.exit(1);
     }
-    String inputDir = args[0];
-    String outputDir = args[1];
-    int numOfReducers = 1;
+    String inputDir = args[0]; // 输入目录，注意，原来的args[1]现在变成了args[0]
+    String outputDir = args[1]; // 输出目录
+    int numOfReducers = 1; // 先假定只有一个Reducer
     if (args.length > 2) {
-      numOfReducers = Integer.parseInt(args[2]);
+      numOfReducers = Integer.parseInt(args[2]); // 若命令行中另有规定就加以调整
     }
 
     Class<? extends InputFormat> theInputFormat =
       TextInputFormat.class;
     if (args.length > 3 && 
         args[3].compareToIgnoreCase("textinputformat") == 0) {
-      theInputFormat = TextInputFormat.class;
+      theInputFormat = TextInputFormat.class; // 允许在命令行中指定的输入格式
     } else {
-      theInputFormat = SequenceFileInputFormat.class;
+      theInputFormat = SequenceFileInputFormat.class; // 默认的输入格式
     }
 
     Path specFile = null;
@@ -155,7 +155,7 @@ public class ValueAggregatorJob {
       jobName = args[5];
     }
     
-    JobConf theJob = new JobConf(conf);
+    JobConf theJob = new JobConf(conf); // 将Configuration对象扩展成JobConf对象
     if (specFile != null) {
       theJob.addResource(specFile);
     }
@@ -167,21 +167,22 @@ public class ValueAggregatorJob {
     }
     theJob.setJobName("ValueAggregatorJob: " + jobName);
 
+    // 设置输入路径
     FileInputFormat.addInputPaths(theJob, inputDir);
-
+    // 设置输入格式
     theJob.setInputFormat(theInputFormat);
-    
+    // 设置mapper类
     theJob.setMapperClass(ValueAggregatorMapper.class);
-    FileOutputFormat.setOutputPath(theJob, new Path(outputDir));
-    theJob.setOutputFormat(TextOutputFormat.class);
-    theJob.setMapOutputKeyClass(Text.class);
-    theJob.setMapOutputValueClass(Text.class);
-    theJob.setOutputKeyClass(Text.class);
-    theJob.setOutputValueClass(Text.class);
-    theJob.setReducerClass(ValueAggregatorReducer.class);
-    theJob.setCombinerClass(ValueAggregatorCombiner.class);
-    theJob.setNumMapTasks(1);
-    theJob.setNumReduceTasks(numOfReducers);
+    FileOutputFormat.setOutputPath(theJob, new Path(outputDir)); // 设置输入目录路径
+    theJob.setOutputFormat(TextOutputFormat.class); // 设置输出格式
+    theJob.setMapOutputKeyClass(Text.class); // 设置mapper输出的键类型
+    theJob.setMapOutputValueClass(Text.class); // 设置mapper输出的值类型
+    theJob.setOutputKeyClass(Text.class); // 设置最后（reducer）输出的键类型
+    theJob.setOutputValueClass(Text.class); // 设置最后（reducer）输出的值类型
+    theJob.setReducerClass(ValueAggregatorReducer.class); // 设置reducer类
+    theJob.setCombinerClass(ValueAggregatorCombiner.class); // 设置combiner类
+    theJob.setNumMapTasks(1); // mapper只需一个
+    theJob.setNumReduceTasks(numOfReducers); // reducer的个数取决于命令行参数
     return theJob;
   }
 

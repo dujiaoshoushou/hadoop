@@ -67,13 +67,13 @@ public class ToolRunner {
     if(conf == null) {
       conf = new Configuration();
     }
-    GenericOptionsParser parser = new GenericOptionsParser(conf, args);
+    GenericOptionsParser parser = new GenericOptionsParser(conf, args); // 创建一个可选性解析器
     //set the configuration back, so that Tool can configure itself
     tool.setConf(conf);
     
     //get the args w/o generic hadoop args
-    String[] toolArgs = parser.getRemainingArgs();
-    return tool.run(toolArgs);
+    String[] toolArgs = parser.getRemainingArgs(); // 获取命令行汇总对于所启用工具的参数
+    return tool.run(toolArgs); // 启动工具的运行
   }
   
   /**

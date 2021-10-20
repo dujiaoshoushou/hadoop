@@ -24,8 +24,8 @@ import org.apache.hadoop.classification.InterfaceStability.Evolving;
 @Public
 @Evolving
 public class SplitLocationInfo {
-  private boolean inMemory;
-  private String location;
+  private boolean inMemory; // 是否缓存在内存中
+  private String location; // 所在节点
   
   public SplitLocationInfo(String location, boolean inMemory) {
     this.location = location;

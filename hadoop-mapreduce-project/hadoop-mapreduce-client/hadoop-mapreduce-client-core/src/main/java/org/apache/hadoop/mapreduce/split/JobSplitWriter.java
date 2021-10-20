@@ -76,8 +76,8 @@ public class JobSplitWriter {
       Configuration conf, FileSystem fs, T[] splits) 
   throws IOException, InterruptedException {
     FSDataOutputStream out = createFile(fs, 
-        JobSubmissionFiles.getJobSplitFile(jobSubmitDir), conf);
-    SplitMetaInfo[] info = writeNewSplits(conf, splits, out);
+        JobSubmissionFiles.getJobSplitFile(jobSubmitDir), conf); // 路径名为"~/job.split",创建输入片（Split)文件，并为其创建一个输出流
+    SplitMetaInfo[] info = writeNewSplits(conf, splits, out);//将分片信息写入Split文件
     out.close();
     writeJobSplitMetaInfo(fs,JobSubmissionFiles.getJobSplitMetaFile(jobSubmitDir), 
         new FsPermission(JobSubmissionFiles.JOB_FILE_PERMISSION), splitVersion,
@@ -89,8 +89,8 @@ public class JobSplitWriter {
       org.apache.hadoop.mapred.InputSplit[] splits) 
   throws IOException {
     FSDataOutputStream out = createFile(fs, 
-        JobSubmissionFiles.getJobSplitFile(jobSubmitDir), conf);
-    SplitMetaInfo[] info = writeOldSplits(splits, out, conf);
+        JobSubmissionFiles.getJobSplitFile(jobSubmitDir), conf); // 路径名为"~/job.split",创建输入片（Split)文件，并为其创建一个输出流
+    SplitMetaInfo[] info = writeOldSplits(splits, out, conf); //将分片信息写入Split文件
     out.close();
     writeJobSplitMetaInfo(fs,JobSubmissionFiles.getJobSplitMetaFile(jobSubmitDir), 
         new FsPermission(JobSubmissionFiles.JOB_FILE_PERMISSION), splitVersion,
@@ -125,12 +125,12 @@ public class JobSplitWriter {
       int maxBlockLocations = conf.getInt(MRConfig.MAX_BLOCK_LOCATIONS_KEY,
           MRConfig.MAX_BLOCK_LOCATIONS_DEFAULT);
       long offset = out.getPos();
-      for(T split: array) {
+      for(T split: array) { // 对于数组中的每一个Split
         long prevCount = out.getPos();
         Text.writeString(out, split.getClass().getName());
         Serializer<T> serializer = 
           factory.getSerializer((Class<T>) split.getClass());
-        serializer.open(out);
+        serializer.open(out); // 串行话后的内容会写入输出流out
         serializer.serialize(split);
         long currCount = out.getPos();
         String[] locations = split.getLocations();

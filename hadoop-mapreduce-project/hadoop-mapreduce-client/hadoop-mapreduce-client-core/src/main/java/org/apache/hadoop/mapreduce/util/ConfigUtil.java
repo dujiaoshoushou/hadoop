@@ -39,7 +39,7 @@ public class ConfigUtil {
    * Adds all the deprecated keys. Loads mapred-default.xml and mapred-site.xml
    */
   public static void loadResources() {
-    addDeprecatedKeys();
+    addDeprecatedKeys(); // 为保持与老API兼容而设
     Configuration.addDefaultResource("mapred-default.xml");
     Configuration.addDefaultResource("mapred-site.xml");
     Configuration.addDefaultResource("yarn-default.xml");

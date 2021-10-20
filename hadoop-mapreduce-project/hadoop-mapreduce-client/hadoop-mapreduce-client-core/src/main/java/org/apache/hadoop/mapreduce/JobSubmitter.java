@@ -73,13 +73,16 @@ class JobSubmitter {
   private static final String SHUFFLE_KEYGEN_ALGORITHM = "HmacSHA1";
   private static final int SHUFFLE_KEY_LENGTH = 64;
   private FileSystem jtFs;
-  private ClientProtocol submitClient;
+  private ClientProtocol submitClient; // 来自Job.sumbmit(),在集群条件下是YARNRunner
   private String submitHostName;
   private String submitHostAddress;
   
   JobSubmitter(FileSystem submitFs, ClientProtocol submitClient) 
   throws IOException {
+    // 将参数submitClient复制到JobSubmitter中
+    // 这是在Job.submit()中通过cluster.getClient()获取的，在集群条件下是YARNRunner
     this.submitClient = submitClient;
+    // jt是JobTracker的缩写，2.0版本后的Hadoop已改成RM
     this.jtFs = submitFs;
   }
   
@@ -135,18 +138,21 @@ class JobSubmitter {
    * @throws ClassNotFoundException
    * @throws InterruptedException
    * @throws IOException
+   * 将作业提交给集群
    */
   JobStatus submitJobInternal(Job job, Cluster cluster) 
   throws ClassNotFoundException, InterruptedException, IOException {
 
-    //validate the jobs output specs 
+    //validate the jobs output specs
+    // 检查输出格式等配置的合理性
     checkSpecs(job);
 
     Configuration conf = job.getConfiguration();
     addMRFrameworkToDistributedCache(conf);
-
+    // 获取目录路径
     Path jobStagingArea = JobSubmissionFiles.getStagingDir(cluster, conf);
     //configure the command line options correctly on the submitting dfs
+    // 获取本节点（主机）的IP地址
     InetAddress ip = InetAddress.getLocalHost();
     if (ip != null) {
       submitHostAddress = ip.getHostAddress();
@@ -154,25 +160,32 @@ class JobSubmitter {
       conf.set(MRJobConfig.JOB_SUBMITHOST,submitHostName);
       conf.set(MRJobConfig.JOB_SUBMITHOSTADDR,submitHostAddress);
     }
+    // 生产作业ID号
     JobID jobId = submitClient.getNewJobID();
-    job.setJobID(jobId);
+    job.setJobID(jobId); // 将作业ID号写入Job对象
+    // 本作业的临时子目录名中包含着作业ID号码
     Path submitJobDir = new Path(jobStagingArea, jobId.toString());
     JobStatus status = null;
     try {
+      // 用户名
       conf.set(MRJobConfig.USER_NAME,
           UserGroupInformation.getCurrentUser().getShortUserName());
+      // 准备用于Http接口的过滤器初始化
       conf.set("hadoop.http.filter.initializers", 
           "org.apache.hadoop.yarn.server.webproxy.amfilter.AmFilterInitializer");
       conf.set(MRJobConfig.MAPREDUCE_JOB_DIR, submitJobDir.toString());
       LOG.debug("Configuring job " + jobId + " with " + submitJobDir 
           + " as the submit dir");
       // get delegation token for the dir
+      // 准备好与访问权限有关的证件（token)
+      // 获取与NameNode打交道所需证件
       TokenCache.obtainTokensForNamenodes(job.getCredentials(),
           new Path[] { submitJobDir }, conf);
       
       populateTokenCache(conf, job.getCredentials());
 
       // generate a secret to authenticate shuffle transfers
+      // 需要生成Mapper与Reducer之间的数据流动所用的密码
       if (TokenCache.getShuffleSecretKey(job.getCredentials()) == null) {
         KeyGenerator keyGen;
         try {
@@ -190,14 +203,17 @@ class JobSubmitter {
         LOG.warn("Max job attempts set to 1 since encrypted intermediate" +
                 "data spill is enabled");
       }
-
+      // 将可执行文件之类拷贝到HDFS中
       copyAndConfigureFiles(job, submitJobDir);
-
+      // 配置文件路径
       Path submitJobFile = JobSubmissionFiles.getJobConfPath(submitJobDir);
       
       // Create the splits for the job
+      /* 将输入数据文件切片，并写入临时目录 */
       LOG.debug("Creating splits at " + jtFs.makeQualified(submitJobDir));
+      // 生成切片，以切片数量决定Mapper数量
       int maps = writeSplits(job, submitJobDir);
+      // "mapreduce.job.maps"
       conf.setInt(MRJobConfig.NUM_MAPS, maps);
       LOG.info("number of splits:" + maps);
 
@@ -209,7 +225,7 @@ class JobSubmitter {
       }
 
       // write "queue admins of the queue to which job is being submitted"
-      // to job file.
+      // to job file. 默认作业调度队列名为"default"
       String queue = conf.get(MRJobConfig.QUEUE_NAME,
           JobConf.DEFAULT_QUEUE_NAME);
       AccessControlList acl = submitClient.getQueueAdmins(queue);
@@ -225,7 +241,7 @@ class JobSubmitter {
       if (conf.getBoolean(
           MRJobConfig.JOB_TOKEN_TRACKING_IDS_ENABLED,
           MRJobConfig.DEFAULT_JOB_TOKEN_TRACKING_IDS_ENABLED)) {
-        // Add HDFS tracking ids
+        // Add HDFS tracking ids ，如果启用了跟踪机制的话
         ArrayList<String> trackingIds = new ArrayList<String>();
         for (Token<? extends TokenIdentifier> t :
             job.getCredentials().getAllTokens()) {
@@ -241,15 +257,17 @@ class JobSubmitter {
         conf.set(MRJobConfig.RESERVATION_ID, reservationId.toString());
       }
 
-      // Write job file to submit dir
+      // Write job file to submit dir，将conf的内容写入一个.xml文件
       writeConf(conf, submitJobFile);
       
       //
       // Now, actually submit the job (using the submit name)
-      //
+      // 万事具备，只欠提交了
       printTokens(jobId, job.getCredentials());
+      // 提交作业，通过YarnRunner.submitJob()或LocalJobRunner.submitJob()
       status = submitClient.submitJob(
           jobId, submitJobDir.toString(), job.getCredentials());
+
       if (status != null) {
         return status;
       } else {
@@ -307,12 +325,13 @@ class JobSubmitter {
     InputFormat<?, ?> input =
       ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
 
-    List<InputSplit> splits = input.getSplits(job);
+    List<InputSplit> splits = input.getSplits(job); // 为输入（数据）文件生成一个InputSplit的List ，FileInputFormat.getSplits(job)
     T[] array = (T[]) splits.toArray(new InputSplit[splits.size()]);
 
     // sort the splits into order based on size, so that the biggest
     // go first
     Arrays.sort(array, new SplitComparator());
+    // 创建Split文件
     JobSplitWriter.createSplitFiles(jobSubmitDir, conf, 
         jobSubmitDir.getFileSystem(conf), array);
     return array.length;
@@ -324,9 +343,9 @@ class JobSubmitter {
     JobConf jConf = (JobConf)job.getConfiguration();
     int maps;
     if (jConf.getUseNewMapper()) {
-      maps = writeNewSplits(job, jobSubmitDir);
+      maps = writeNewSplits(job, jobSubmitDir); // 按新API的要求写Split文件，返回split的数量
     } else {
-      maps = writeOldSplits(jConf, jobSubmitDir);
+      maps = writeOldSplits(jConf, jobSubmitDir); // 按老API的要求写Split文件，返回split的数量
     }
     return maps;
   }

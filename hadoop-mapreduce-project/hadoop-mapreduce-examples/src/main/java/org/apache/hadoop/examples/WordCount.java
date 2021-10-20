@@ -84,6 +84,6 @@ public class WordCount {
     }
     FileOutputFormat.setOutputPath(job,
       new Path(otherArgs[otherArgs.length - 1]));
-    System.exit(job.waitForCompletion(true) ? 0 : 1);
+    System.exit(job.waitForCompletion(true) ? 0 : 1); // 提交作业并等待其结束运行
   }
 }

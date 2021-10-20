@@ -169,7 +169,7 @@ public class JobClient extends CLI implements AutoCloseable {
    * remote service to provide certain functionality.
    */
   static class NetworkedJob implements RunningJob {
-    Job job;
+    Job job; // NetworkedJob里面有一个Job对象
     /**
      * We store a JobProfile and a timestamp for when we last
      * acquired the job profile.  If the job is null, then we cannot
@@ -434,6 +434,7 @@ public class JobClient extends CLI implements AutoCloseable {
   /**
    * Ugi of the client. We store this ugi when the client is created and 
    * then make sure that the same ugi is used to run the various protocols.
+   * UserGroupInformation类的对象clientUgi，用来表明客户身份
    */
   UserGroupInformation clientUgi;
   
@@ -451,7 +452,7 @@ public class JobClient extends CLI implements AutoCloseable {
    * @throws IOException
    */
   public JobClient(JobConf conf) throws IOException {
-    init(conf);
+    init(conf); // 创建JobClient对象时要调用其init()方法
   }
 
   /**
@@ -537,6 +538,7 @@ public class JobClient extends CLI implements AutoCloseable {
    * @throws FileNotFoundException
    * @throws InvalidJobConfException
    * @throws IOException
+   * 提交作业，以文件名为参数
    */
   public RunningJob submitJob(String jobFile) throws FileNotFoundException, 
                                                      InvalidJobConfException, 
@@ -556,24 +558,32 @@ public class JobClient extends CLI implements AutoCloseable {
    *         running-job.
    * @throws FileNotFoundException
    * @throws IOException
+   * 提交作业，以JobConf对象为参数
    */
   public RunningJob submitJob(final JobConf conf) throws FileNotFoundException,
                                                   IOException {
-    return submitJobInternal(conf);
+    return submitJobInternal(conf); // submitJob() 通过submitJobInternal()完成作业提交
   }
 
+  /**
+   * 实际的作业提交的过程
+   * @param conf
+   * @return
+   * @throws FileNotFoundException
+   * @throws IOException
+   */
   @InterfaceAudience.Private
   public RunningJob submitJobInternal(final JobConf conf)
       throws FileNotFoundException, IOException {
     try {
-      conf.setBooleanIfUnset("mapred.mapper.new-api", false);
-      conf.setBooleanIfUnset("mapred.reducer.new-api", false);
-      Job job = clientUgi.doAs(new PrivilegedExceptionAction<Job> () {
+      conf.setBooleanIfUnset("mapred.mapper.new-api", false); // mapper，老API
+      conf.setBooleanIfUnset("mapred.reducer.new-api", false); // reducer，老API
+      Job job = clientUgi.doAs(new PrivilegedExceptionAction<Job> () { // 以实际用户的权限行事
         @Override
         public Job run() throws IOException, ClassNotFoundException, 
           InterruptedException {
           Job job = Job.getInstance(conf);
-          job.submit();
+          job.submit(); // 以实际用户的权限，通过Job.submit()提交作业
           return job;
         }
       });
@@ -589,7 +599,7 @@ public class JobClient extends CLI implements AutoCloseable {
       if (prev != null) {
         prev.close();
       }
-      return new NetworkedJob(job);
+      return new NetworkedJob(job); // 创建一个NetworkedJob对象，以便了解作业的进展
     } catch (InterruptedException ie) {
       throw new IOException("interrupted", ie);
     }
@@ -869,11 +879,11 @@ public class JobClient extends CLI implements AutoCloseable {
    * @throws IOException if the job fails
    */
   public static RunningJob runJob(JobConf job) throws IOException {
-    JobClient jc = new JobClient(job);
-    RunningJob rj = jc.submitJob(job);
+    JobClient jc = new JobClient(job); // 创建JobClient类的对象jc
+    RunningJob rj = jc.submitJob(job); // 提交作业，返回一个RunningJob对象rj
     try {
-      if (!jc.monitorAndPrintJob(job, rj)) {
-        throw new IOException("Job failed!");
+      if (!jc.monitorAndPrintJob(job, rj)) { // 监视并显示作业rj的运行情况，直至作业结束
+        throw new IOException("Job failed!"); // 如果返回值是false就说明运行失败
       }
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();

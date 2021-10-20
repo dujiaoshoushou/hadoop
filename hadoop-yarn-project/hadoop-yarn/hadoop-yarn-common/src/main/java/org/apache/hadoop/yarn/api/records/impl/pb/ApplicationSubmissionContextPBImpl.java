@@ -58,7 +58,7 @@ import org.apache.hadoop.thirdparty.protobuf.TextFormat;
 public class ApplicationSubmissionContextPBImpl 
 extends ApplicationSubmissionContext {
   ApplicationSubmissionContextProto proto = 
-      ApplicationSubmissionContextProto.getDefaultInstance();
+      ApplicationSubmissionContextProto.getDefaultInstance(); // 通信协议部分
   ApplicationSubmissionContextProto.Builder builder = null;
   boolean viaProto = false;
   

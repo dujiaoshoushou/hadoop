@@ -215,11 +215,11 @@ public class ClientRMService extends AbstractService implements
       LoggerFactory.getLogger(ClientRMService.class);
 
   final private AtomicInteger applicationCounter = new AtomicInteger(0);
-  final private YarnScheduler scheduler;
-  final private RMContext rmContext;
-  private final RMAppManager rmAppManager;
+  final private YarnScheduler scheduler; // 这是RM中的作业管理这
+  final private RMContext rmContext; // 记录着有关RM的种种基本情况
+  private final RMAppManager rmAppManager; // 这是RM中的APP管理者
 
-  private Server server;
+  private Server server; // 作为其基础的RPC层server
   protected RMDelegationTokenSecretManager rmDTSecretManager;
 
   private final RecordFactory recordFactory = RecordFactoryProvider.getRecordFactory(null);
@@ -639,6 +639,7 @@ public class ClientRMService extends AbstractService implements
 
     // Check whether app has already been put into rmContext,
     // If it is, simply return the response
+    // APP已在队列中，是重复提交
     if (rmContext.getRMApps().get(applicationId) != null) {
       LOG.info("This is an earlier submitted application: " + applicationId);
       return SubmitApplicationResponse.newInstance();
@@ -659,7 +660,7 @@ public class ClientRMService extends AbstractService implements
                 + tokenConf.capacity() + " bytes.");
       }
     }
-    if (submissionContext.getQueue() == null) {
+    if (submissionContext.getQueue() == null) { // 如果未指定提交到哪个队列，就用默认的队列
       submissionContext.setQueue(YarnConfiguration.DEFAULT_QUEUE_NAME);
     }
     if (submissionContext.getApplicationName() == null) {
@@ -690,6 +691,7 @@ public class ClientRMService extends AbstractService implements
 
     try {
       // call RMAppManager to submit application directly
+      // 把App交到了RMAppManager的手里，这里
       rmAppManager.submitApplication(submissionContext,
           System.currentTimeMillis(), user);
 

@@ -157,7 +157,10 @@ class JobResourceUploader {
     // and under the local fs also provides UNIX-like object loading
     // semantics. (that is, if the job file is deleted right after
     // submission, we can still run the submission to completion)
-    //
+    // 找出 JobTracker 使用的 fs。
+    // 以临时名称将作业复制到其中。这允许 DFS 工作，
+    // 并且在本地 fs 下还提供类 UNIX 对象加载
+    // 语义。 （也就是说，如果job文件在提交后立即删除，我们仍然可以运行提交完成）
 
     // Create a number of filenames in the JobTracker's fs namespace
     LOG.debug("default FileSystem: " + jtFs.getUri());
@@ -171,7 +174,7 @@ class JobResourceUploader {
     submitJobDir = new Path(submitJobDir.toUri().getPath());
     FsPermission mapredSysPerms =
         new FsPermission(JobSubmissionFiles.JOB_DIR_PERMISSION);
-    mkdirs(jtFs, submitJobDir, mapredSysPerms);
+    mkdirs(jtFs, submitJobDir, mapredSysPerms); // 在HDFS文件系统中创建目录
 
     if (!conf.getBoolean(MRJobConfig.MR_AM_STAGING_DIR_ERASURECODING_ENABLED,
         MRJobConfig.DEFAULT_MR_AM_STAGING_ERASURECODING_ENABLED)) {
@@ -180,10 +183,10 @@ class JobResourceUploader {
 
     // Get the resources that have been added via command line arguments in the
     // GenericOptionsParser (i.e. files, libjars, archives).
-    Collection<String> files = conf.getStringCollection("tmpfiles");
-    Collection<String> libjars = conf.getStringCollection("tmpjars");
-    Collection<String> archives = conf.getStringCollection("tmparchives");
-    String jobJar = job.getJar();
+    Collection<String> files = conf.getStringCollection("tmpfiles"); // 来自命令行中的-files选项，计算中需要用到文件
+    Collection<String> libjars = conf.getStringCollection("tmpjars"); // 来自命令行中的-libjars选项，计算中需要用到的jar
+    Collection<String> archives = conf.getStringCollection("tmparchives"); // 来自命令行中的-archives选项
+    String jobJar = job.getJar(); // 本作业的java程序经编译生成的jar文件，这是一定有的
 
     // Merge resources that have been programmatically specified for the shared
     // cache via the Job API.

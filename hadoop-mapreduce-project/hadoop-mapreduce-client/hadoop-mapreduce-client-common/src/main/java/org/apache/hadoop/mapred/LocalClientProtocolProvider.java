@@ -33,13 +33,12 @@ public class LocalClientProtocolProvider extends ClientProtocolProvider {
   @Override
   public ClientProtocol create(Configuration conf) throws IOException {
     String framework =
-        conf.get(MRConfig.FRAMEWORK_NAME, MRConfig.LOCAL_FRAMEWORK_NAME);
+        conf.get(MRConfig.FRAMEWORK_NAME, MRConfig.LOCAL_FRAMEWORK_NAME); // 从配置块总获取mapreduce.framework.name，默认是local
     if (!MRConfig.LOCAL_FRAMEWORK_NAME.equals(framework)) {
-      return null;
+      return null; // 如果不是"local"就是失败
     }
-    conf.setInt(JobContext.NUM_MAPS, 1);
-
-    return new LocalJobRunner(conf);
+    conf.setInt(JobContext.NUM_MAPS, 1); // 既然是local就没有必要用多个Mapper
+    return new LocalJobRunner(conf); // 实际创建LocalJobRunner对象
   }
 
   @Override

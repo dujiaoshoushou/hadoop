@@ -304,9 +304,10 @@ public class YarnClientImpl extends YarnClient {
       throw new ApplicationIdNotProvidedException(
           "ApplicationId is not provided in ApplicationSubmissionContext");
     }
+    // 创建一个SubmitApplicationRequestBPImpl类的记录块
     SubmitApplicationRequest request =
         Records.newRecord(SubmitApplicationRequest.class);
-    request.setApplicationSubmissionContext(appContext);
+    request.setApplicationSubmissionContext(appContext); // 设置好记录块中的Context
 
     // Automatically add the timeline DT into the CLC
     // Only when the security and the timeline service are both enabled
@@ -315,7 +316,7 @@ public class YarnClientImpl extends YarnClient {
     }
 
     //TODO: YARN-1763:Handle RM failovers during the submitApplication call.
-    rmClient.submitApplication(request);
+    rmClient.submitApplication(request); // 实际的跨节点提交
 
     int pollCount = 0;
     long startTime = System.currentTimeMillis();
@@ -328,6 +329,7 @@ public class YarnClientImpl extends YarnClient {
                                   YarnApplicationState.KILLED);		
     while (true) {
       try {
+        // 是循环获取来自RM节点的应用状态报告，从中获取本应用的当前状态
         ApplicationReport appReport = getApplicationReport(applicationId);
         YarnApplicationState state = appReport.getYarnApplicationState();
         if (!waitingStates.contains(state)) {

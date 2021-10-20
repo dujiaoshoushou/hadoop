@@ -139,7 +139,7 @@ public class YARNRunner implements ClientProtocol {
     AM_CONTAINER_PRIORITY.setPriority(0);
   }
 
-  private ResourceMgrDelegate resMgrDelegate;
+  private ResourceMgrDelegate resMgrDelegate; // 这是RM派驻在"地方"上的特派员
   private ClientCache clientCache;
   private Configuration conf;
   private final FileContext defaultFileContext;
@@ -320,15 +320,15 @@ public class YARNRunner implements ClientProtocol {
   public JobStatus submitJob(JobID jobId, String jobSubmitDir, Credentials ts)
   throws IOException, InterruptedException {
     
-    addHistoryToken(ts);
+    addHistoryToken(ts); // 用于为历史记录服务，与"作业历史（JobHistory）"有关
 
     ApplicationSubmissionContext appContext =
-      createApplicationSubmissionContext(conf, jobSubmitDir, ts);
+      createApplicationSubmissionContext(conf, jobSubmitDir, ts); // 创建一个ApplicationSubmissionContext，并将conf中的相关信息转移过去
 
-    // Submit to ResourceManager
+    // Submit to ResourceManager 将作业提交给资源管理者（ResourceManager）*/
     try {
       ApplicationId applicationId =
-          resMgrDelegate.submitApplication(appContext);
+          resMgrDelegate.submitApplication(appContext); // 由RM派驻的特派员转交给ApplicationSubmissionContext
 
       ApplicationReport appMaster = resMgrDelegate
           .getApplicationReport(applicationId);

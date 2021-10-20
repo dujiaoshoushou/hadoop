@@ -954,6 +954,7 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
    * Set the {@link Partitioner} for the job.
    * @param cls the <code>Partitioner</code> to use
    * @throws IllegalStateException if the job is submitted
+   * Mapper的输出可能要有Partitioner按某种规则分发个多个Reducer
    */
   public void setPartitionerClass(Class<? extends Partitioner> cls
                                   ) throws IllegalStateException {
@@ -1085,6 +1086,7 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
    * @param speculativeExecution <code>true</code> if speculative execution 
    *                             should be turned on for map tasks,
    *                             else <code>false</code>.
+   *                             是否需要有speculative的Mapper起预备对的作用
    */
   public void setMapSpeculativeExecution(boolean speculativeExecution) {
     ensureState(JobState.DEFINE);
@@ -1097,6 +1099,7 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
    * @param speculativeExecution <code>true</code> if speculative execution 
    *                             should be turned on for reduce tasks,
    *                             else <code>false</code>.
+   *                             是否需要speculative的Reducer起预备队的作用
    */
   public void setReduceSpeculativeExecution(boolean speculativeExecution) {
     ensureState(JobState.DEFINE);
@@ -1565,9 +1568,9 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
    */
   public void submit() 
          throws IOException, InterruptedException, ClassNotFoundException {
-    ensureState(JobState.DEFINE);
-    setUseNewAPI();
-    connect();
+    ensureState(JobState.DEFINE); // 确认没有重复提交
+    setUseNewAPI(); // 根据配置信息确定是否采用新API
+    connect(); // 建立与集群的连接，创建Cluster对象cluster
     final JobSubmitter submitter = 
         getJobSubmitter(cluster.getFileSystem(), cluster.getClient());
     status = ugi.doAs(new PrivilegedExceptionAction<JobStatus>() {
@@ -1590,16 +1593,16 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
   public boolean waitForCompletion(boolean verbose
                                    ) throws IOException, InterruptedException,
                                             ClassNotFoundException {
-    if (state == JobState.DEFINE) {
-      submit();
+    if (state == JobState.DEFINE) { // 确保该作业只提交异常，提交后即变成RUNNING
+      submit(); // 通过Job.submit()走完作业提交的流程
     }
-    if (verbose) {
-      monitorAndPrintJob();
-    } else {
+    if (verbose) { // 提交之后旧监视器运行，直至结束
+      monitorAndPrintJob(); // 饶舌模式，周期性地报告作业的进展
+    } else { // 要不然，就是周期性的询问作业是否已经完成
       // get the completion poll interval from the client.
       int completionPollIntervalMillis = 
         Job.getCompletionPollInterval(cluster.getConf());
-      while (!isComplete()) {
+      while (!isComplete()) { // 询问作业是否已经完成
         try {
           Thread.sleep(completionPollIntervalMillis);
         } catch (InterruptedException ie) {
@@ -1760,6 +1763,12 @@ public class Job extends JobContextImpl implements JobContext, AutoCloseable {
     conf.set(Job.OUTPUT_FILTER, newValue.toString());
   }
 
+  /**
+   * 是否"拼车"模式（MapTask与ReduceTask在同一个节点上）
+   * @return
+   * @throws IOException
+   * @throws InterruptedException
+   */
   public boolean isUber() throws IOException, InterruptedException {
     ensureState(JobState.RUNNING);
     updateStatus();

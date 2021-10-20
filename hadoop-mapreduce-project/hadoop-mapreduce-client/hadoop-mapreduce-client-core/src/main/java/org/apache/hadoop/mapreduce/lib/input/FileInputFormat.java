@@ -393,14 +393,18 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
    * Generate the list of files and make them into FileSplits.
    * @param job the job context
    * @throws IOException
+   * 生成文件列表并将它们制作成 FileSplits。
    */
   public List<InputSplit> getSplits(JobContext job) throws IOException {
     StopWatch sw = new StopWatch().start();
+    // 最小Split尺寸
     long minSize = Math.max(getFormatMinSplitSize(), getMinSplitSize(job));
+    // 最大Split尺寸
     long maxSize = getMaxSplitSize(job);
 
-    // generate splits
+    // generate splits 创建一个空白的Split List
     List<InputSplit> splits = new ArrayList<InputSplit>();
+    // 获取每个输入文件的FileStatus
     List<FileStatus> files = listStatus(job);
 
     boolean ignoreDirs = !getInputDirRecursive(job)
@@ -413,15 +417,15 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
       long length = file.getLen();
       if (length != 0) {
         BlockLocation[] blkLocations;
-        if (file instanceof LocatedFileStatus) {
+        if (file instanceof LocatedFileStatus) { // 如果是个含有数据块位置信息的文件
           blkLocations = ((LocatedFileStatus) file).getBlockLocations();
-        } else {
+        } else { // 一般文件
           FileSystem fs = path.getFileSystem(job.getConfiguration());
           blkLocations = fs.getFileBlockLocations(file, 0, length);
         }
         if (isSplitable(job, path)) {
           long blockSize = file.getBlockSize();
-          long splitSize = computeSplitSize(blockSize, minSize, maxSize);
+          long splitSize = computeSplitSize(blockSize, minSize, maxSize); // split的大小不一定是数据块的大小，但通常都是
 
           long bytesRemaining = length;
           while (((double) bytesRemaining)/splitSize > SPLIT_SLOP) {
@@ -432,13 +436,14 @@ public abstract class FileInputFormat<K, V> extends InputFormat<K, V> {
             bytesRemaining -= splitSize;
           }
 
-          if (bytesRemaining != 0) {
+          if (bytesRemaining != 0) { // 剩下的尾巴（剩余部分）作为一个分片
             int blkIndex = getBlockIndex(blkLocations, length-bytesRemaining);
+            // 分片起点所在数据块的index
             splits.add(makeSplit(path, length-bytesRemaining, bytesRemaining,
                        blkLocations[blkIndex].getHosts(),
                        blkLocations[blkIndex].getCachedHosts()));
           }
-        } else { // not splitable
+        } else { // not splitable 长度为0
           if (LOG.isDebugEnabled()) {
             // Log only if the file is big enough to be splitted
             if (length > Math.min(file.getBlockSize(), minSize)) {

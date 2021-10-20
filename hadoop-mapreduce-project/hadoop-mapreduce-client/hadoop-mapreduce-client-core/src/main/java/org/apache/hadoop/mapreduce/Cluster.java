@@ -56,8 +56,8 @@ public class Cluster {
   @InterfaceStability.Evolving
   public enum JobTrackerStatus {INITIALIZING, RUNNING};
 
-  private ClientProtocolProvider clientProtocolProvider;
-  private ClientProtocol client;
+  private ClientProtocolProvider clientProtocolProvider; // 集群条件下为YarnClientProtocolProvider
+  private ClientProtocol client; //  在集群条件下，这是与玩具通信的渠道和规则
   private UserGroupInformation ugi;
   private Configuration conf;
   private FileSystem fs = null;
@@ -125,14 +125,14 @@ public class Cluster {
       LOG.debug("Trying ClientProtocolProvider : "
           + provider.getClass().getName());
       ClientProtocol clientProtocol = null;
-      try {
+      try { // 试图创建ClientProtocol ，即LocalJobRunner 或 YARNRunner，视配置而定
         if (jobTrackAddr == null) {
           clientProtocol = provider.create(conf);
         } else {
           clientProtocol = provider.create(jobTrackAddr, conf);
         }
 
-        if (clientProtocol != null) {
+        if (clientProtocol != null) { // 已经创建成功
           clientProtocolProvider = provider;
           client = clientProtocol;
           LOG.debug("Picked " + provider.getClass().getName()

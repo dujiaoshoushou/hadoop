@@ -39,11 +39,11 @@ import org.apache.hadoop.io.Writable;
 @InterfaceAudience.Public
 @InterfaceStability.Stable
 public class FileSplit extends InputSplit implements Writable {
-  private Path file;
-  private long start;
-  private long length;
-  private String[] hosts;
-  private SplitLocationInfo[] hostInfos;
+  private Path file; // 输入文件路径
+  private long start; // 分片在文件中的位置（起点）
+  private long length; // 分片长度
+  private String[] hosts; // 这个分片所在数据块的多个复份所在节点
+  private SplitLocationInfo[] hostInfos; // 每个数据块复份所在节点，以及是否缓存
 
   public FileSplit() {}
 
