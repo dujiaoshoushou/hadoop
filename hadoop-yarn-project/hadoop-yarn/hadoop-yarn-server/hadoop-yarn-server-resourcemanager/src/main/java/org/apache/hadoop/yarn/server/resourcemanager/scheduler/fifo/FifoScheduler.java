@@ -392,8 +392,8 @@ public class FifoScheduler extends
       String queue, String user, boolean isAppRecovering) {
     SchedulerApplication<FifoAppAttempt> application =
         new SchedulerApplication<>(DEFAULT_QUEUE, user);
-    applications.put(applicationId, application);
-    metrics.submitApp(user);
+    applications.put(applicationId, application); // 将创建的SchedulerApplication放在applications集合里
+    metrics.submitApp(user); // metrics是一个QueueMetrics对象，用于统计目的
     LOG.info("Accepted application " + applicationId + " from user: " + user
         + ", currently num of applications: " + applications.size());
     if (isAppRecovering) {
@@ -401,7 +401,7 @@ public class FifoScheduler extends
           applicationId);
     } else {
       rmContext.getDispatcher().getEventHandler()
-        .handle(new RMAppEvent(applicationId, RMAppEventType.APP_ACCEPTED));
+        .handle(new RMAppEvent(applicationId, RMAppEventType.APP_ACCEPTED)); // 创建APP_ACCEPTED事件，并派发事件
     }
   }
 
@@ -734,7 +734,7 @@ public class FifoScheduler extends
   @Override
   public void handle(SchedulerEvent event) {
     switch(event.getType()) {
-    case NODE_ADDED:
+    case NODE_ADDED: // 增加了一个节点
     {
       NodeAddedSchedulerEvent nodeAddedEvent = (NodeAddedSchedulerEvent)event;
       addNode(nodeAddedEvent.getAddedRMNode());
@@ -743,13 +743,13 @@ public class FifoScheduler extends
 
     }
     break;
-    case NODE_REMOVED:
+    case NODE_REMOVED: // 移除了一个节点
     {
       NodeRemovedSchedulerEvent nodeRemovedEvent = (NodeRemovedSchedulerEvent)event;
       removeNode(nodeRemovedEvent.getRemovedRMNode());
     }
     break;
-    case NODE_RESOURCE_UPDATE:
+    case NODE_RESOURCE_UPDATE: // 节点的资源发生了变化
     {
       NodeResourceUpdateSchedulerEvent nodeResourceUpdatedEvent = 
           (NodeResourceUpdateSchedulerEvent)event;
@@ -757,14 +757,14 @@ public class FifoScheduler extends
         nodeResourceUpdatedEvent.getResourceOption());
     }
     break;
-    case NODE_UPDATE:
+    case NODE_UPDATE: // 节点的状态发生了变化
     {
       NodeUpdateSchedulerEvent nodeUpdatedEvent = 
       (NodeUpdateSchedulerEvent)event;
       nodeUpdate(nodeUpdatedEvent.getRMNode());
     }
     break;
-    case APP_ADDED:
+    case APP_ADDED: // 增加了一个App
     {
       AppAddedSchedulerEvent appAddedEvent = (AppAddedSchedulerEvent) event;
       addApplication(appAddedEvent.getApplicationId(),
@@ -772,14 +772,14 @@ public class FifoScheduler extends
         appAddedEvent.getIsAppRecovering());
     }
     break;
-    case APP_REMOVED:
+    case APP_REMOVED: // 移除了一个App
     {
       AppRemovedSchedulerEvent appRemovedEvent = (AppRemovedSchedulerEvent)event;
       doneApplication(appRemovedEvent.getApplicationID(),
         appRemovedEvent.getFinalState());
     }
     break;
-    case APP_ATTEMPT_ADDED:
+    case APP_ATTEMPT_ADDED: // 试图增加一个app
     {
       AppAttemptAddedSchedulerEvent appAttemptAddedEvent =
           (AppAttemptAddedSchedulerEvent) event;
@@ -788,7 +788,7 @@ public class FifoScheduler extends
         appAttemptAddedEvent.getIsAttemptRecovering());
     }
     break;
-    case APP_ATTEMPT_REMOVED:
+    case APP_ATTEMPT_REMOVED: // 试图移除一个app
     {
       AppAttemptRemovedSchedulerEvent appAttemptRemovedEvent =
           (AppAttemptRemovedSchedulerEvent) event;
@@ -803,7 +803,7 @@ public class FifoScheduler extends
       }
     }
     break;
-    case CONTAINER_EXPIRED:
+    case CONTAINER_EXPIRED: // 容器过期
     {
       ContainerExpiredSchedulerEvent containerExpiredEvent = 
           (ContainerExpiredSchedulerEvent) event;
@@ -815,7 +815,7 @@ public class FifoScheduler extends
           RMContainerEventType.EXPIRE);
     }
     break;
-    case RELEASE_CONTAINER: {
+    case RELEASE_CONTAINER: { // 释放容器
       if (!(event instanceof ReleaseContainerEvent)) {
         throw new RuntimeException("Unexpected event type: " + event);
       }

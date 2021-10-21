@@ -1073,11 +1073,11 @@ public class ResourceManager extends CompositeService
 
     @Override
     public void handle(RMAppEvent event) {
-      ApplicationId appID = event.getApplicationId();
-      RMApp rmApp = this.rmContext.getRMApps().get(appID);
+      ApplicationId appID = event.getApplicationId(); // 获取该事件的AppId
+      RMApp rmApp = this.rmContext.getRMApps().get(appID); // 根据AppId找到其RMAppImpl对象
       if (rmApp != null) {
         try {
-          rmApp.handle(event);
+          rmApp.handle(event); // 调用其handle()方法，RMAppImpl.handle(event)
         } catch (Throwable t) {
           LOG.error("Error in handling event type " + event.getType()
               + " for application " + appID, t);
@@ -1099,13 +1099,13 @@ public class ResourceManager extends CompositeService
     @Override
     public void handle(RMAppAttemptEvent event) {
       ApplicationAttemptId appAttemptId = event.getApplicationAttemptId();
-      ApplicationId appId = appAttemptId.getApplicationId();
-      RMApp rmApp = this.rmContext.getRMApps().get(appId);
+      ApplicationId appId = appAttemptId.getApplicationId(); // 注意，这是ApplicationId
+      RMApp rmApp = this.rmContext.getRMApps().get(appId); // 根据ApplicationId获取RMAppImpl对象
       if (rmApp != null) {
-        RMAppAttempt rmAppAttempt = rmApp.getRMAppAttempt(appAttemptId);
+        RMAppAttempt rmAppAttempt = rmApp.getRMAppAttempt(appAttemptId); // 根据ApplicationAttemptId获取器RMAppAttemptImpl对象
         if (rmAppAttempt != null) {
           try {
-            rmAppAttempt.handle(event);
+            rmAppAttempt.handle(event); // == RMAppAttemptImpl.handle()
           } catch (Throwable t) {
             LOG.error("Error in handling event type " + event.getType()
                 + " for applicationAttempt " + appAttemptId, t);

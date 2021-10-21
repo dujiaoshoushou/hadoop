@@ -887,7 +887,7 @@ public class RMAppImpl implements RMApp, Recoverable {
       final RMAppState oldState = getState();
       try {
         /* keep the master in sync with the state machine */
-        this.stateMachine.doTransition(event.getType(), event);
+        this.stateMachine.doTransition(event.getType(), event); // 触发状态机跳变
       } catch (InvalidStateTransitionException e) {
         LOG.error("App: " + appID
             + " can't handle this event at current state", e);
@@ -985,15 +985,16 @@ public class RMAppImpl implements RMApp, Recoverable {
     RMAppAttempt attempt =
         new RMAppAttemptImpl(appAttemptId, rmContext, scheduler, masterService,
           submissionContext, conf, amReqs, this, currentAMBlacklistManager);
-    attempts.put(appAttemptId, attempt);
-    currentAttempt = attempt;
+    attempts.put(appAttemptId, attempt); // 将attempt连同器ID一起放入attempts集合里
+    currentAttempt = attempt; // 将新创建的attempt设置成currentAttempt
   }
 
   private void
       createAndStartNewAttempt(boolean transferStateFromPreviousAttempt) {
-    createNewAttempt();
+    createNewAttempt(); // 创建一个新的RMAppSttemptImpl，并将其设置成currentAttempt
     handler.handle(new RMAppStartAttemptEvent(currentAttempt.getAppAttemptId(),
-      transferStateFromPreviousAttempt));
+      transferStateFromPreviousAttempt)); // 生成一个RMAppAttemptEventType.START事件，
+    // handler取决于事件类型，在这里是RMAppAttemptImpl.handle()
   }
 
   private void processNodeUpdate(RMAppNodeUpdateType type, RMNode node) {
@@ -1169,7 +1170,7 @@ public class RMAppImpl implements RMApp, Recoverable {
   private static final class StartAppAttemptTransition extends RMAppTransition {
     @Override
     public void transition(RMAppImpl app, RMAppEvent event) {
-      app.createAndStartNewAttempt(false);
+      app.createAndStartNewAttempt(false); // 开始一次启动可运行的尝试
     };
   }
 

@@ -352,17 +352,19 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
     RMAppImpl application = createAndPopulateNewRMApp(
         submissionContext, submitTime, user, false, -1, null);
     try {
-      if (UserGroupInformation.isSecurityEnabled()) {
+      if (UserGroupInformation.isSecurityEnabled()) { // 如果开启了安全机制
         this.rmContext.getDelegationTokenRenewer()
             .addApplicationAsync(applicationId,
                 BuilderUtils.parseCredentials(submissionContext),
                 submissionContext.getCancelTokensWhenComplete(),
                 application.getUser(),
                 BuilderUtils.parseTokensConf(submissionContext));
-      } else {
+      } else { // 未开启安全机制
         // Dispatcher is not yet started at this time, so these START events
         // enqueued should be guaranteed to be first processed when dispatcher
         // gets started.
+        // 从rmContext获取所用的Dispatcher，进而获取其EventHandler，将START事件交给它处理
+        // 后者会用其触发RMAppImpl对象的状态机
         this.rmContext.getDispatcher().getEventHandler()
             .handle(new RMAppEvent(applicationId, RMAppEventType.START));
       }
@@ -416,7 +418,7 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
 
     ApplicationId applicationId = submissionContext.getApplicationId();
     List<ResourceRequest> amReqs = validateAndCreateResourceRequest(
-        submissionContext, isRecovery);
+        submissionContext, isRecovery); // 检验资源请求是否合理，不合理就发InvalidResourceRequestException异常
 
     // Verify and get the update application priority and set back to
     // submissionContext
@@ -495,12 +497,13 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
             submissionContext.getApplicationName(), user,
             submissionContext.getQueue(),
             submissionContext, this.scheduler, this.masterService,
-            submitTime, submissionContext.getApplicationType(),
+            submitTime, submissionContext.getApplicationType(), // 默认是yarn
             submissionContext.getApplicationTags(), amReqs, placementContext,
             startTime);
     // Concurrent app submissions with same applicationId will fail here
     // Concurrent app submissions with different applicationIds will not
     // influence each other
+    // 将App加入RMContextImpl内部的一个MAP，以后凭applicationId就可找到RMAppImpl对象
     if (rmContext.getRMApps().putIfAbsent(applicationId, application) !=
         null) {
       String message = "Application with id " + applicationId
@@ -513,7 +516,10 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
       // Start timeline collector for the submitted app
       application.startTimelineCollector();
     }
-    // Inform the ACLs Manager
+    // Inform the ACLs Manager，将App加入到访问控制名单ACL管理器中
+
+
+
     this.applicationACLsManager.addApplication(applicationId,
         submissionContext.getAMContainerSpec().getApplicationACLs());
     return application;

@@ -907,13 +907,13 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
     this.writeLock.lock();
 
     try {
-      ApplicationAttemptId appAttemptID = event.getApplicationAttemptId();
+      ApplicationAttemptId appAttemptID = event.getApplicationAttemptId(); // 从event中提取ApplicationAttemptId
       LOG.debug("Processing event for {} of type {}",
           appAttemptID, event.getType());
       final RMAppAttemptState oldState = getAppAttemptState();
       try {
         /* keep the master in sync with the state machine */
-        this.stateMachine.doTransition(event.getType(), event);
+        this.stateMachine.doTransition(event.getType(), event); // 这是具体RMAppAttemptImpl对象的状态机
       } catch (InvalidStateTransitionException e) {
         LOG.error("App attempt: " + appAttemptID
             + " can't handle this event at current state", e);
@@ -1060,6 +1060,7 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
       appAttempt.startTime = System.currentTimeMillis();
 
       // Register with the ApplicationMasterService
+      // 向ApplicationMasterService登记一次RMAppAttempt
       appAttempt.masterService
           .registerAppAttempt(appAttempt.applicationAttemptId);
 

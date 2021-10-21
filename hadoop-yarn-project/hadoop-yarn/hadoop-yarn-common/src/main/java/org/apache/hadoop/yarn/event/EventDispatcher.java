@@ -61,14 +61,14 @@ public class EventDispatcher<T extends Event> extends
 
       while (!stopped && !Thread.currentThread().isInterrupted()) {
         try {
-          event = eventQueue.take();
+          event = eventQueue.take(); // 从队列汇总取得下一个事件
         } catch (InterruptedException e) {
           LOG.error("Returning, interrupted : " + e);
           return; // TODO: Kill RM.
         }
 
         try {
-          handler.handle(event);
+          handler.handle(event); // 调用FairScheduler.handle,CapacityScheduler.handle,FifoScheduler.handle
         } catch (Throwable t) {
           // An error occurred, but we are shutting down anyway.
           // If it was an InterruptedException, the very act of
@@ -118,15 +118,15 @@ public class EventDispatcher<T extends Event> extends
   public void handle(T event) {
     try {
       int qSize = eventQueue.size();
-      if (qSize !=0 && qSize %1000 == 0) {
+      if (qSize !=0 && qSize %1000 == 0) { // 每1000个事件LOG一次
         LOG.info("Size of " + getName() + " event-queue is " + qSize);
       }
       int remCapacity = eventQueue.remainingCapacity();
-      if (remCapacity < 1000) {
+      if (remCapacity < 1000) { // 事件队列的容量已感紧张
         LOG.info("Very low remaining capacity on " + getName() + "" +
             "event queue: " + remCapacity);
       }
-      this.eventQueue.put(event);
+      this.eventQueue.put(event); // 挂入调度器的事件队列
     } catch (InterruptedException e) {
       LOG.info("Interrupted. Trying to exit gracefully.");
     }
