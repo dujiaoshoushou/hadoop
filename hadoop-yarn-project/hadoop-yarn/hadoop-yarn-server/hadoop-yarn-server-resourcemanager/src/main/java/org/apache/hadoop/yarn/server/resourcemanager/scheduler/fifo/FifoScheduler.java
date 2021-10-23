@@ -325,7 +325,7 @@ public class FifoScheduler extends
       List<ResourceRequest> ask, List<SchedulingRequest> schedulingRequests,
       List<ContainerId> release, List<String> blacklistAdditions, List<String> blacklistRemovals,
       ContainerUpdates updateRequests) {
-    FifoAppAttempt application = getApplicationAttempt(applicationAttemptId);
+    FifoAppAttempt application = getApplicationAttempt(applicationAttemptId); // 代表着要求分配资源的AppAttempt
     if (application == null) {
       LOG.error("Calling allocate on removed or non existent application " +
           applicationAttemptId.getApplicationId());
@@ -343,10 +343,10 @@ public class FifoScheduler extends
       return EMPTY_ALLOCATION;
     }
 
-    // Sanity check
+    // Sanity check 资源要求的合理性检测和规格化
     normalizeResourceRequests(ask);
 
-    // Release containers
+    // Release containers 释放该释放的容器
     releaseContainers(release, application);
 
     synchronized (application) {
@@ -359,7 +359,7 @@ public class FifoScheduler extends
         return EMPTY_ALLOCATION;
       }
 
-      if (!ask.isEmpty()) {
+      if (!ask.isEmpty()) { // 要求分配的资源集合非空
         LOG.debug("allocate: pre-update" +
             " applicationId=" + applicationAttemptId + 
             " application=" + application);
@@ -377,11 +377,13 @@ public class FifoScheduler extends
             " applicationId=" + applicationAttemptId +
             " #ask=" + ask.size());
       }
-
+      // 修改黑名单
       application.updateBlacklist(blacklistAdditions, blacklistRemovals);
 
       Resource headroom = application.getHeadroom();
       application.setApplicationHeadroomForMetrics(headroom);
+      // application.pullNewlyAllocatedContainers() 把新分配的容器都收揽过啦并为之创建Token
+
       return new Allocation(application.pullNewlyAllocatedContainers(),
           headroom, null, null, null, application.pullUpdatedNMTokens());
     }

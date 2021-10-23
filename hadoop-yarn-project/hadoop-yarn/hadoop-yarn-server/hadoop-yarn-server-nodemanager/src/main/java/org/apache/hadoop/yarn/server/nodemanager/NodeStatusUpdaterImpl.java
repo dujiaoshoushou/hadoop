@@ -1293,7 +1293,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
     @SuppressWarnings("unchecked")
     public void run() {
       int lastHeartbeatID = 0;
-      while (!isStopped) {
+      while (!isStopped) { // 只要没有停止命令，就一直循环
         // Send heartbeat
         try {
           NodeHeartbeatResponse response = null;
@@ -1301,7 +1301,8 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
               nodeLabelsHandler.getNodeLabelsForHeartbeat();
           Set<NodeAttribute> nodeAttributesForHeartbeat =
                   nodeAttributesHandler.getNodeAttributesForHeartbeat();
-          NodeStatus nodeStatus = getNodeStatus(lastHeartbeatID);
+          NodeStatus nodeStatus = getNodeStatus(lastHeartbeatID); // 收集本节点的状态信息
+          // 准备好一个心跳报告
           NodeHeartbeatRequest request =
               NodeHeartbeatRequest.newInstance(nodeStatus,
                   NodeStatusUpdaterImpl.this.context
@@ -1311,7 +1312,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                   nodeLabelsForHeartbeat,
                   nodeAttributesForHeartbeat,
                   NodeStatusUpdaterImpl.this.context
-                      .getRegisteringCollectors());
+                      .getRegisteringCollectors()); // 准备好一个心跳报告
 
           if (logAggregationEnabled) {
             // pull log aggregation status for application running in this NM
@@ -1328,6 +1329,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
               NodeStatusUpdaterImpl.this.tokenSequenceNo);
           response = resourceTracker.nodeHeartbeat(request);
           //get next heartbeat interval from response
+          // 然后根据RM节点的回应进行处理，执行来自RM节点的命令
           nextHeartBeatInterval = response.getNextHeartBeatInterval();
           updateMasterKeys(response);
 
@@ -1343,6 +1345,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
             // because these completed containers will be reported back to RM
             // when NM re-registers with RM.
             // Only remove the cleanedup containers that are acked
+            // 根据命令清除不在需要运行的容器和应用
             removeOrTrackCompletedContainersFromContext(response
                 .getContainersToBeRemovedFromNM());
 
@@ -1428,7 +1431,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                 YarnConfiguration.DEFAULT_RM_NM_HEARTBEAT_INTERVAL_MS :
                 nextHeartBeatInterval;
             try {
-              heartbeatMonitor.wait(nextHeartBeatInterval);
+              heartbeatMonitor.wait(nextHeartBeatInterval); // 睡眠一段时间后再进入下一轮循环
             } catch (InterruptedException e) {
               // Do Nothing
             }

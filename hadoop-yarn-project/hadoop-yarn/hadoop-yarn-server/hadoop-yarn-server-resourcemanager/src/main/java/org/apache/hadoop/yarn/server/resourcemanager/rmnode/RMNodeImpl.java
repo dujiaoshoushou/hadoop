@@ -839,7 +839,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
   private static NodeHealthStatus updateRMNodeFromStatusEvents(
       RMNodeImpl rmNode, RMNodeStatusEvent statusEvent) {
     // Switch the last heartbeatresponse.
-    NodeHealthStatus remoteNodeHealthStatus = statusEvent.getNodeHealthStatus();
+    NodeHealthStatus remoteNodeHealthStatus = statusEvent.getNodeHealthStatus(); // 获取节点监控状态
     rmNode.setHealthReport(remoteNodeHealthStatus.getHealthReport());
     rmNode.setLastHealthReportTime(remoteNodeHealthStatus
         .getLastHealthReportTime());
@@ -1122,16 +1122,19 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     // If the current state is NodeState.UNHEALTHY
     // Then node is already been removed from the
     // Scheduler
+    // 如果当前状态是 NodeState.UNHEALTHY
+    // 那么节点已经从调度器中移除了
     NodeState initialState = rmNode.getState();
     if (!initialState.equals(NodeState.UNHEALTHY)) {
       rmNode.context.getDispatcher().getEventHandler()
         .handle(new NodeRemovedSchedulerEvent(rmNode));
     }
+    // 告知NodesListManager，这个节点不再可用
     rmNode.context.getDispatcher().getEventHandler().handle(
         new NodesListManagerEvent(
             NodesListManagerEventType.NODE_UNUSABLE, rmNode));
 
-    //Update the metrics
+    //Update the metrics 更新统计信息
     rmNode.updateMetricsForDeactivatedNode(initialState, finalState);
   }
 
@@ -1239,7 +1242,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         }
       }
 
-      if (!remoteNodeHealthStatus.getIsNodeHealthy()) {
+      if (!remoteNodeHealthStatus.getIsNodeHealthy()) { // 如果这个节点已经不健康了
         LOG.info("Node " + rmNode.nodeId +
             " reported UNHEALTHY with details: " +
             remoteNodeHealthStatus.getHealthReport());

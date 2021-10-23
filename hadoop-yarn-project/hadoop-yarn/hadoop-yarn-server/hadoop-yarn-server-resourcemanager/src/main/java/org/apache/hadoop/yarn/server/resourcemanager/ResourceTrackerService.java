@@ -549,7 +549,7 @@ public class ResourceTrackerService extends AbstractService implements
   public NodeHeartbeatResponse nodeHeartbeat(NodeHeartbeatRequest request)
       throws YarnException, IOException {
 
-    NodeStatus remoteNodeStatus = request.getNodeStatus();
+    NodeStatus remoteNodeStatus = request.getNodeStatus(); // 从心跳报告中获取搭载的状态信息
     /**
      * Here is the node heartbeat sequence...
      * 1. Check if it's a valid (i.e. not excluded) node
@@ -558,10 +558,10 @@ public class ResourceTrackerService extends AbstractService implements
      * 4. Send healthStatus to RMNode
      * 5. Update node's labels if distributed Node Labels configuration is enabled
      */
-    NodeId nodeId = remoteNodeStatus.getNodeId();
+    NodeId nodeId = remoteNodeStatus.getNodeId(); // 必须知道是从哪个节点来的。
 
     // 1. Check if it's a valid (i.e. not excluded) node, if not, see if it is
-    // in decommissioning.
+    // in decommissioning. 检查它是否是一个有效的（即未被排除的）节点，如果不是，看看它是否正在退役。
     if (!this.nodesListManager.isValidNode(nodeId.getHost())
         && !isNodeInDecommissioning(nodeId)) {
       String message =
@@ -572,21 +572,22 @@ public class ResourceTrackerService extends AbstractService implements
           NodeAction.SHUTDOWN, message);
     }
 
-    // 2. Check if it's a registered node
+    // 2. Check if it's a registered node 找到RM节点上相应的对象rmNode
     RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
     if (rmNode == null) {
       /* node does not exist */
       String message = "Node not found resyncing " + remoteNodeStatus.getNodeId();
       LOG.info(message);
       return YarnServerBuilderUtils.newNodeHeartbeatResponse(NodeAction.RESYNC,
-          message);
+          message); // 准备回应
     }
 
-    // Send ping
+    // Send ping 告知nmLivelinessMonitor，这个节点还活着
     this.nmLivelinessMonitor.receivedPing(nodeId);
     this.decommissioningWatcher.update(rmNode, remoteNodeStatus);
 
     // 3. Check if it's a 'fresh' heartbeat i.e. not duplicate heartbeat
+    // 检查它是否是“新鲜”心跳，即不是重复的心跳
     NodeHeartbeatResponse lastNodeHeartbeatResponse = rmNode.getLastNodeHeartBeatResponse();
     if (getNextResponseId(
         remoteNodeStatus.getResponseId()) == lastNodeHeartbeatResponse
@@ -627,14 +628,14 @@ public class ResourceTrackerService extends AbstractService implements
       updateAppCollectorsMap(request);
     }
 
-    // Heartbeat response
+    // Heartbeat response 心跳回应
     NodeHeartbeatResponse nodeHeartBeatResponse =
         YarnServerBuilderUtils.newNodeHeartbeatResponse(
             getNextResponseId(lastNodeHeartbeatResponse.getResponseId()),
             NodeAction.NORMAL, null, null, null, null, nextHeartBeatInterval);
-    rmNode.setAndUpdateNodeHeartbeatResponse(nodeHeartBeatResponse);
+    rmNode.setAndUpdateNodeHeartbeatResponse(nodeHeartBeatResponse); // 需清楚容器
 
-    populateKeys(request, nodeHeartBeatResponse);
+    populateKeys(request, nodeHeartBeatResponse); // 设置其他回应内容
 
     populateTokenSequenceNo(request, nodeHeartBeatResponse);
 
@@ -645,6 +646,7 @@ public class ResourceTrackerService extends AbstractService implements
     }
 
     // 4. Send status to RMNode, saving the latest response.
+    // 发送状态给RMNode，保存最新的响应。
     RMNodeStatusEvent nodeStatusEvent =
         new RMNodeStatusEvent(nodeId, remoteNodeStatus);
     if (request.getLogAggregationReportsForApps() != null
@@ -652,6 +654,8 @@ public class ResourceTrackerService extends AbstractService implements
       nodeStatusEvent.setLogAggregationReportsForApps(request
         .getLogAggregationReportsForApps());
     }
+    // 以此事件驱动具体RMNodeImpl的状态机 StatusUpdateWhenHealthyTransition.transition(rmNode,event)
+    // 这是伴随着RMNodeImpl状态机跳变的操作
     this.rmContext.getDispatcher().getEventHandler().handle(nodeStatusEvent);
 
     // 5. Update node's labels to RM's NodeLabelManager.

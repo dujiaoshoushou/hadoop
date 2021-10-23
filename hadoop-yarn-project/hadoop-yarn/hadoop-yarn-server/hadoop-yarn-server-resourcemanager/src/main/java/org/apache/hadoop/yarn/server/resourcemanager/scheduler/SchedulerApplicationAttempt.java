@@ -701,7 +701,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
       containerType = ContainerType.APPLICATION_MASTER;
     }
     try {
-      // create container token and NMToken altogether.
+      // create container token and NMToken altogether. 创建容器token和NMToken
       container.setContainerToken(rmContext.getContainerTokenSecretManager()
           .createContainerToken(container.getId(), container.getVersion(),
               container.getNodeId(), getUser(), container.getResource(),
@@ -711,7 +711,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
               container.getAllocationRequestId(),
               rmContainer.getAllocationTags()));
       container.setAllocationTags(rmContainer.getAllocationTags());
-      updateNMToken(container);
+      updateNMToken(container); // 更新容器NMToken
     } catch (IllegalArgumentException e) {
       // DNS might be down, skip returning this container.
       LOG.error("Error trying to assign container token and NM token to"
@@ -720,7 +720,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
     }
 
     if (updateType == null) {
-      // This is a newly allocated container
+      // This is a newly allocated container，这是一个新分配的容器
       rmContainer.handle(new RMContainerEvent(
           rmContainer.getContainerId(), RMContainerEventType.ACQUIRED));
     } else {
@@ -811,6 +811,8 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
   // Create container token and update NMToken altogether, if either of them fails for
   // some reason like DNS unavailable, do not return this container and keep it
   // in the newlyAllocatedContainers waiting to be refetched.
+  // 创建容器令牌并更新 NMToken，如果它们中的任何一个由于 DNS 不可用等原因而失败，
+  // 请不要返回此容器并将其保存在新分配的容器中，等待重新获取。
   public List<Container> pullNewlyAllocatedContainers() {
     writeLock.lock();
     try {
@@ -821,12 +823,12 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
       while (i.hasNext()) {
         RMContainer rmContainer = i.next();
         Container updatedContainer =
-            updateContainerAndNMToken(rmContainer, null);
+            updateContainerAndNMToken(rmContainer, null); // 提到一个容器后，更新容器和 NM 令牌
         // Only add container to return list when it's not null.
         // updatedContainer could be null when generate token failed, it can be
         // caused by DNS resolving failed.
         if (updatedContainer != null) {
-          returnContainerList.add(updatedContainer);
+          returnContainerList.add(updatedContainer); // 已从该App的newlyAllocatedContainers中把容器都拦到了returnContainerList中
           i.remove();
         }
       }
