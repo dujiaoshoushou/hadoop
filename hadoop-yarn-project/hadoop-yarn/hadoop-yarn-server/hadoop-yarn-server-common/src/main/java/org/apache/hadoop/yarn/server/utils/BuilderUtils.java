@@ -262,7 +262,7 @@ public class BuilderUtils {
     container.setContainerToken(containerToken);
     container.setExecutionType(executionType);
     container.setAllocationRequestId(allocationRequestId);
-    return container;
+    return container; // 创建一个容器，即ContainerPBImpl对象
   }
 
   public static Container newContainer(ContainerId containerId, NodeId nodeId,

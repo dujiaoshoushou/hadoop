@@ -1252,11 +1252,11 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
           return NodeState.DECOMMISSIONING;
         } else {
           reportNodeUnusable(rmNode, NodeState.UNHEALTHY);
-          return NodeState.UNHEALTHY;
+          return NodeState.UNHEALTHY; // RMNodeImpl的状态机专人"不健康"状态
         }
       }
-
-      rmNode.handleContainerStatus(statusEvent.getContainers());
+      // 处理容器状态，这里是重点
+      rmNode.handleContainerStatus(statusEvent.getContainers()); //
       rmNode.handleReportedIncreasedContainers(
           statusEvent.getNMReportedIncreasedContainers());
 
@@ -1267,10 +1267,10 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         rmNode.handleLogAggregationStatus(logAggregationReportsForApps);
       }
 
-      if(rmNode.nextHeartBeat) {
-        rmNode.nextHeartBeat = false;
+      if(rmNode.nextHeartBeat) { // 至少有一个容器的状态发生了变化
+        rmNode.nextHeartBeat = false; // 以保证只发生了一次
         rmNode.context.getDispatcher().getEventHandler().handle(
-            new NodeUpdateSchedulerEvent(rmNode));
+            new NodeUpdateSchedulerEvent(rmNode)); // 通知调度器有节点发生了状态变化
       }
 
       // Update DTRenewer in secure mode to keep these apps alive. Today this is
@@ -1402,12 +1402,15 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     List<Map.Entry<ApplicationId, ContainerStatus>> needUpdateContainers =
         new ArrayList<Map.Entry<ApplicationId, ContainerStatus>>();
     int numRemoteRunningContainers = 0;
-    for (ContainerStatus remoteContainer : containerStatuses) {
+    for (ContainerStatus remoteContainer : containerStatuses) { // 扫描本事件所涉及的每个容器
       ContainerId containerId = remoteContainer.getContainerId();
 
       // Don't bother with containers already scheduled for cleanup, or for
       // applications already killed. The scheduler doens't need to know any
       // more about this container
+      // 不要打扰已经安排清理的容器，或者
+      // 已经终止的应用程序。调度程序不需要知道任何
+      // 关于这个容器的更多信息
       if (containersToClean.contains(containerId)) {
         LOG.info("Container " + containerId + " already scheduled for "
             + "cleanup, no further processing");
@@ -1428,15 +1431,18 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         handleRunningAppOnNode(this, context, containerAppId, nodeId);
       }
 
-      // Process running containers
+      // Process running containers 这个容器已经在运行中
       if (remoteContainer.getState() == ContainerState.RUNNING) {
         ++numRemoteRunningContainers;
-        if (!launchedContainers.contains(containerId)) {
+        if (!launchedContainers.contains(containerId)) { // 单不在该节点的已发起名单中
           // Just launched container. RM knows about it the first time.
+          // 加入该节点的已发起名单
           launchedContainers.add(containerId);
+          // 这是一个新发起的容器
           newlyLaunchedContainers.add(remoteContainer);
           // Unregister from containerAllocationExpirer.
-          containerAllocationExpirer
+          // 从containerAllocationExpirer撤销，
+          containerAllocationExpirer // 主要负责节点的生命线程监控
               .unregister(new AllocationExpirationInfo(containerId));
         }
 
@@ -1460,9 +1466,9 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
               remoteContainer));
         }
       } else {
-        // A finished container
+        // A finished container 这个容器的运行已经结束，从该节点的已发起名单中去掉
         launchedContainers.remove(containerId);
-        if (completedContainers.add(containerId)) {
+        if (completedContainers.add(containerId)) { // 转入以结束容器名单
           newlyCompletedContainers.add(remoteContainer);
         }
         // Unregister from containerAllocationExpirer.
@@ -1483,6 +1489,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     if (newlyLaunchedContainers.size() != 0
         || newlyCompletedContainers.size() != 0
         || needUpdateContainers.size() != 0) {
+      // 有容器改变了状态，把有关这些容器变化的信息收集在该节点的nodeUpdateQueue中
       nodeUpdateQueue.add(new UpdatedContainerInfo(newlyLaunchedContainers,
           newlyCompletedContainers, needUpdateContainers));
     }

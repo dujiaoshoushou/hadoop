@@ -39,8 +39,8 @@ public class ApplicationMasterLauncher extends AbstractService implements
     EventHandler<AMLauncherEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(
       ApplicationMasterLauncher.class);
-  private ThreadPoolExecutor launcherPool;
-  private LauncherThread launcherHandlingThread;
+  private ThreadPoolExecutor launcherPool; // 一个线程池
+  private LauncherThread launcherHandlingThread; // 内部定义的一个类，是线程
   
   private final BlockingQueue<Runnable> masterEvents
     = new LinkedBlockingQueue<Runnable>();
@@ -50,7 +50,7 @@ public class ApplicationMasterLauncher extends AbstractService implements
   public ApplicationMasterLauncher(RMContext context) {
     super(ApplicationMasterLauncher.class.getName());
     this.context = context;
-    this.launcherHandlingThread = new LauncherThread();
+    this.launcherHandlingThread = new LauncherThread(); // 创建launcherHandlingThread线程
   }
   
   @Override
@@ -61,6 +61,7 @@ public class ApplicationMasterLauncher extends AbstractService implements
     ThreadFactory tf = new ThreadFactoryBuilder()
         .setNameFormat("ApplicationMasterLauncher #%d")
         .build();
+    // 创建launcherPool线程池及其内部的阻塞式队列
     launcherPool = new ThreadPoolExecutor(threadCount, threadCount, 1,
         TimeUnit.HOURS, new LinkedBlockingQueue<Runnable>());
     launcherPool.setThreadFactory(tf);
@@ -76,7 +77,7 @@ public class ApplicationMasterLauncher extends AbstractService implements
 
   @Override
   protected void serviceStart() throws Exception {
-    launcherHandlingThread.start();
+    launcherHandlingThread.start(); // 启动launcherHandlingThread线程
     super.serviceStart();
   }
   
@@ -90,7 +91,7 @@ public class ApplicationMasterLauncher extends AbstractService implements
   private void launch(RMAppAttempt application) {
     Runnable launcher = createRunnableLauncher(application, 
         AMLauncherEventType.LAUNCH);
-    masterEvents.add(launcher);
+    masterEvents.add(launcher); // 挂入ApplicationMasterLauncher的等待队列
   }
   
 
@@ -116,8 +117,8 @@ public class ApplicationMasterLauncher extends AbstractService implements
       while (!this.isInterrupted()) {
         Runnable toLaunch;
         try {
-          toLaunch = masterEvents.take();
-          launcherPool.execute(toLaunch);
+          toLaunch = masterEvents.take(); // 从队列中取出，这里toLaunch就是前面挂入队列的AMLauncher
+          launcherPool.execute(toLaunch); // 将线程池中的一个线程用于AMLauncher，执行AMLauncher.run()
         } catch (InterruptedException e) {
           LOG.warn(this.getClass().getName() + " interrupted. Returning.");
           return;
@@ -137,7 +138,7 @@ public class ApplicationMasterLauncher extends AbstractService implements
     RMAppAttempt application = appEvent.getAppAttempt();
     switch (event) {
     case LAUNCH:
-      launch(application);
+      launch(application); // 对于LAUNCH命令的反应就是launch()
       break;
     case CLEANUP:
       cleanup(application);

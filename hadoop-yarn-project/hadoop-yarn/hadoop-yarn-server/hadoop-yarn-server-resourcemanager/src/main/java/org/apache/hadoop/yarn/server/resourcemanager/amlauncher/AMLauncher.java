@@ -109,25 +109,25 @@ public class AMLauncher implements Runnable {
   }
 
   private void launch() throws IOException, YarnException {
-    connect();
+    connect(); // 这是AMLauncher.connect()
     ContainerId masterContainerID = masterContainer.getId();
     ApplicationSubmissionContext applicationContext =
-        application.getSubmissionContext();
+        application.getSubmissionContext(); // ApplicationSubmissionContext来自用户的作业提交
     LOG.info("Setting up container " + masterContainer
         + " for AM " + application.getAppAttemptId());
     ContainerLaunchContext launchContext =
-        createAMContainerLaunchContext(applicationContext, masterContainerID);
+        createAMContainerLaunchContext(applicationContext, masterContainerID); // ContainerLaunchContext用于让NM节点创建进程以执行任务
 
     StartContainerRequest scRequest =
         StartContainerRequest.newInstance(launchContext,
           masterContainer.getContainerToken());
     List<StartContainerRequest> list = new ArrayList<StartContainerRequest>();
-    list.add(scRequest);
+    list.add(scRequest); // 把StartContainerRequest对象加到List中
     StartContainersRequest allRequests =
         StartContainersRequest.newInstance(list);
 
     StartContainersResponse response =
-        containerMgrProxy.startContainers(allRequests);
+        containerMgrProxy.startContainers(allRequests); // 真正发往NM节点的事一个List，但是这一次的List中只有一个请求  ==ContainerManagementProtocal.startContainers(allRequests)
     if (response.getFailedRequests() != null
         && response.getFailedRequests().containsKey(masterContainerID)) {
       Throwable t =
@@ -159,13 +159,13 @@ public class AMLauncher implements Runnable {
   protected ContainerManagementProtocol getContainerMgrProxy(
       final ContainerId containerId) {
 
-    final NodeId node = masterContainer.getNodeId();
-    final InetSocketAddress containerManagerConnectAddress =
+    final NodeId node = masterContainer.getNodeId(); // 主容器中有对方的NodeId
+    final InetSocketAddress containerManagerConnectAddress = // 还有对方的IP地址和端口号
         NetUtils.createSocketAddrForHost(node.getHost(), node.getPort());
 
-    final YarnRPC rpc = getYarnRPC();
+    final YarnRPC rpc = getYarnRPC(); // 创建底层RPC
 
-    UserGroupInformation currentUser =
+    UserGroupInformation currentUser = // 创建UGI
         UserGroupInformation.createRemoteUser(containerId
             .getApplicationAttemptId().toString());
 
@@ -175,12 +175,12 @@ public class AMLauncher implements Runnable {
             .getUser();
     org.apache.hadoop.yarn.api.records.Token token =
         rmContext.getNMTokenSecretManager().createNMToken(
-            containerId.getApplicationAttemptId(), node, user);
+            containerId.getApplicationAttemptId(), node, user); // 创建用于对方节点的证章Token
     currentUser.addToken(ConverterUtils.convertFromYarn(token,
-        containerManagerConnectAddress));
+        containerManagerConnectAddress)); // 把证章加到UGI中
 
     return NMProxy.createNMProxy(conf, ContainerManagementProtocol.class,
-        currentUser, rpc, containerManagerConnectAddress);
+        currentUser, rpc, containerManagerConnectAddress); // 创建NodeManager代理
   }
 
   @VisibleForTesting

@@ -232,6 +232,7 @@ public class LocalityAppPlacementAllocator <N extends SchedulerNode>
   public PendingAsk getPendingAsk(String resourceName) {
     readLock.lock();
     try {
+      // 先尝试满足其指定需求在这个节点上的容器要求
       ResourceRequest request = getResourceRequest(resourceName);
       if (null == request) {
         return PendingAsk.ZERO;

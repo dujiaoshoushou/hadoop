@@ -101,10 +101,10 @@ public class ContainerManagementProtocolPBServiceImpl implements ContainerManage
   @Override
   public StartContainersResponseProto startContainers(RpcController arg0,
       StartContainersRequestProto proto) throws ServiceException {
-    StartContainersRequestPBImpl request = new StartContainersRequestPBImpl(proto);
+    StartContainersRequestPBImpl request = new StartContainersRequestPBImpl(proto); // 根据请求报文构建StartContainersRequestPBImpl对象
     try {
-      StartContainersResponse response = real.startContainers(request);
-      return ((StartContainersResponsePBImpl)response).getProto();
+      StartContainersResponse response = real.startContainers(request); // 调用startContainers
+      return ((StartContainersResponsePBImpl)response).getProto(); // 这是要返回RM节点的报文
     } catch (YarnException e) {
       throw new ServiceException(e);
     } catch (IOException e) {

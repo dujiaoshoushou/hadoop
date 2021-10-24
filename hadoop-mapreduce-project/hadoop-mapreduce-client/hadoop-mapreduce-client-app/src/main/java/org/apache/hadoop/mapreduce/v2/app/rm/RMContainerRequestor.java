@@ -120,9 +120,9 @@ public abstract class RMContainerRequestor extends RMCommunicator {
   @VisibleForTesting
   static class ContainerRequest {
     final TaskAttemptId attemptID;
-    final Resource capability;
-    final String[] hosts;
-    final String[] racks;
+    final Resource capability; // 要求什么资源
+    final String[] hosts; // 要求在哪一些节点机上
+    final String[] racks; // 要求在哪一些机架上
     //final boolean earlierAttemptFailed;
     final Priority priority;
     final String nodeLabelExpression;

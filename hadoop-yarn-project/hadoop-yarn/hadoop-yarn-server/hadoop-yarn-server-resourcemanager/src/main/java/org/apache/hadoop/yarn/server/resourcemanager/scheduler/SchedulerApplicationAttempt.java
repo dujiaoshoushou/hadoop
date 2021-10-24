@@ -648,7 +648,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
       NodeId nodeId) {
     writeLock.lock();
     try {
-      // Inform the container
+      // Inform the container 根据ID找到这个容器对象
       RMContainer rmContainer = getRMContainer(containerId);
       if (rmContainer == null) {
         // Some unknown container sneaked into the system. Kill it.
@@ -656,7 +656,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
             new RMNodeCleanContainerEvent(nodeId, containerId));
         return;
       }
-
+      // 使该容器的状态机受LAUNCHED事件触发
       rmContainer.handle(
           new RMContainerEvent(containerId, RMContainerEventType.LAUNCHED));
     } finally {
@@ -884,6 +884,7 @@ public class SchedulerApplicationAttempt implements SchedulableEntity {
         }
       }
     } else {
+      // 所分配的容器都汇总在这里
       newlyAllocatedContainers.add(rmContainer);
     }
   }

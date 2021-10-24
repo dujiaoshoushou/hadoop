@@ -341,6 +341,7 @@ public class ApplicationImpl implements Application {
       app.aclsManager.addApplication(app.getAppId(), app.applicationACLs);
       // Inform the logAggregator
       app.logAggregationContext = initEvent.getLogAggregationContext();
+      // 触发APPLICATION_STARTED事件，触发日志服务的状态机，启动具体App的运行日志（LOG）机制
       app.dispatcher.getEventHandler().handle(
           new LogHandlerAppStartedEvent(app.appId, app.user,
               app.credentials, app.applicationACLs,

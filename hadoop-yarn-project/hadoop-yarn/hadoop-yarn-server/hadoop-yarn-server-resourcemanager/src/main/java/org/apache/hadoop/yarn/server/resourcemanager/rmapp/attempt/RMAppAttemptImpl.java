@@ -1186,6 +1186,9 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
     public RMAppAttemptState transition(RMAppAttemptImpl appAttempt,
         RMAppAttemptEvent event) {
       // Acquire the AM container from the scheduler.
+      // 从调度器获取 AM 容器。
+      // 如果在上次在ScheduleTransition.transition()中对
+      // scheduler.allocate()的调用未能达到目的，那么这一次也许可以如愿了。
       Allocation amContainerAllocation =
           appAttempt.scheduler.allocate(appAttempt.applicationAttemptId,
             EMPTY_CONTAINER_REQUEST_LIST, null, EMPTY_CONTAINER_RELEASE_LIST, null,
@@ -1199,12 +1202,14 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
       // DNS unavailable causing container token not generated. As such, we
       // return to the previous state and keep retry until am container is
       // fetched.
+
       if (amContainerAllocation.getContainers().size() == 0) {
+        // 要是还不行，就创建一个线程，让它过一会就试一下
         appAttempt.retryFetchingAMContainer(appAttempt);
         return RMAppAttemptState.SCHEDULED;
       }
 
-      // Set the masterContainer
+      // Set the masterContainer amContainerAllocation中至少有一个容器，可以往前走了
       Container amContainer = amContainerAllocation.getContainers().get(0);
       RMContainerImpl rmMasterContainer = (RMContainerImpl)appAttempt.scheduler
           .getRMContainer(amContainer.getId());
@@ -1232,7 +1237,7 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
       ClusterMetrics.getMetrics().addAMContainerAllocationDelay(
           allocationDelay);
       appAttempt.storeAttempt();
-      return RMAppAttemptState.ALLOCATED_SAVING;
+      return RMAppAttemptState.ALLOCATED_SAVING; // appAttempt 的状态机向前走了一步
     }
   }
 

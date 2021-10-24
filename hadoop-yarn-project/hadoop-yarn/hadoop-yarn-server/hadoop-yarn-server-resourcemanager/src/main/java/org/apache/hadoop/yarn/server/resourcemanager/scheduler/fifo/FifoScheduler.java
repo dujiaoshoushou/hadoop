@@ -497,8 +497,10 @@ public class FifoScheduler extends
         " #applications=" + applications.size());
 
     // Try to assign containers to applications in fifo order
+    // 尝试按 fifo 顺序将容器分配给应用程序
     for (Map.Entry<ApplicationId, SchedulerApplication<FifoAppAttempt>> e : applications
         .entrySet()) {
+      // 获取该App的当前AppAttempt对象
       FifoAppAttempt application = e.getValue().getCurrentAppAttempt();
       if (application == null) {
         continue;
@@ -508,16 +510,19 @@ public class FifoScheduler extends
       application.showRequests();
       synchronized (application) {
         // Check if this resource is on the blacklist
+        // 如果这个App不适合放在这个节点上，已将本节点列入其黑名单，就跳过
         if (SchedulerAppUtils.isPlaceBlacklisted(application, node, LOG)) {
           continue;
         }
 
         for (SchedulerRequestKey schedulerKey :
             application.getSchedulerKeys()) {
+          // 获取最大可分配容器
           int maxContainers =
               getMaxAllocatableContainers(application, schedulerKey, node,
                   NodeType.OFF_SWITCH);
           // Ensure the application needs containers of this priority
+          // 确保应用程序需要此优先级的容器,对于同一App不同优先级别的容器要求
           if (maxContainers > 0) {
             int assignedContainers =
                 assignContainersOnNode(node, application, schedulerKey);
@@ -526,36 +531,46 @@ public class FifoScheduler extends
               break;
             }
           }
-        }
+        } // 已完成对同一APP所有优先级别资源要求的扫描
       }
       
       LOG.debug("post-assignContainers");
       application.showRequests();
 
-      // Done
+      // Done 资源不足就循环结束
       if (Resources.lessThan(resourceCalculator, getClusterResource(),
               node.getUnallocatedResource(), minimumAllocation)) {
         break;
       }
-    }
+    } // 已完成对所有已受理App的扫描
 
     // Update the applications' headroom to correctly take into
     // account the containers assigned in this update.
+    // 更新应用程序的净空以正确考虑
+    // 在此更新中分配的容器。
     for (SchedulerApplication<FifoAppAttempt> application : applications.values()) {
       FifoAppAttempt attempt =
           (FifoAppAttempt) application.getCurrentAppAttempt();
       if (attempt == null) {
         continue;
       }
-      updateAppHeadRoom(attempt);
+      updateAppHeadRoom(attempt); // 修过各个FiCaSchedulerApp的可用资源上限
     }
   }
 
-  private int getMaxAllocatableContainers(FifoAppAttempt application,
+  /**
+   * 获取最多能为本App分配多少个容器
+   * @param application
+   * @param schedulerKey
+   * @param node
+   * @param type
+   * @return
+   */
+  private int  getMaxAllocatableContainers(FifoAppAttempt application,
       SchedulerRequestKey schedulerKey, FiCaSchedulerNode node, NodeType type) {
     PendingAsk offswitchAsk = application.getPendingAsk(schedulerKey,
-        ResourceRequest.ANY);
-    int maxContainers = offswitchAsk.getCount();
+        ResourceRequest.ANY); // 获取该App总的资源需求，不考虑地狱
+    int maxContainers = offswitchAsk.getCount(); // 该App所需的容器数量
 
     if (type == NodeType.OFF_SWITCH) {
       return maxContainers;
@@ -563,22 +578,22 @@ public class FifoScheduler extends
 
     if (type == NodeType.RACK_LOCAL) {
       PendingAsk rackLocalAsk = application.getPendingAsk(schedulerKey,
-          node.getRackName());
-      if (rackLocalAsk.getCount() <= 0) {
+          node.getRackName()); // 获取该app可用分配在此机架上的资源需求
+      if (rackLocalAsk.getCount() <= 0) { //
         return maxContainers;
       }
-
+      // 该App可用分配在此机架上的容器数量
       maxContainers = Math.min(maxContainers,
           rackLocalAsk.getCount());
     }
 
     if (type == NodeType.NODE_LOCAL) {
       PendingAsk nodeLocalAsk = application.getPendingAsk(schedulerKey,
-          node.getRMNode().getHostName());
+          node.getRMNode().getHostName()); // 获取该App在此节点上的资源需求
 
       if (nodeLocalAsk.getCount() > 0) {
         maxContainers = Math.min(maxContainers,
-            nodeLocalAsk.getCount());
+            nodeLocalAsk.getCount()); // 该APP所需在此节点上的容器数量
       }
     }
 
@@ -589,15 +604,15 @@ public class FifoScheduler extends
   private int assignContainersOnNode(FiCaSchedulerNode node, 
       FifoAppAttempt application, SchedulerRequestKey schedulerKey
   ) {
-    // Data-local
+    // Data-local 先尝试满足其指定需要在这个节点上的容器要求
     int nodeLocalContainers =
         assignNodeLocalContainers(node, application, schedulerKey);
 
-    // Rack-local
+    // Rack-local 再尝试满足可以在同一机架上的容器要求
     int rackLocalContainers =
         assignRackLocalContainers(node, application, schedulerKey);
 
-    // Off-switch
+    // Off-switch 最后试图满足其余的容器要求
     int offSwitchContainers =
         assignOffSwitchContainers(node, application, schedulerKey);
 
@@ -620,6 +635,8 @@ public class FifoScheduler extends
         node.getNodeName());
     if (nodeLocalAsk.getCount() > 0) {
       // Don't allocate on this node if we don't need containers on this rack
+      // 如果我们不需要这个机架上的容器，就不要在这个节点上分配
+      // APP没有要求这个节点上的资源，就返回
       if (application.getOutstandingAsksCount(schedulerKey,
           node.getRackName()) <= 0) {
         return 0;
@@ -642,6 +659,7 @@ public class FifoScheduler extends
         node.getRMNode().getRackName());
     if (rackAsk.getCount() > 0) {
       // Don't allocate on this rack if the application doens't need containers
+      // 如果App仅在这个一个机架上有容器要求，就先不分配
       if (application.getOutstandingAsksCount(schedulerKey,
           ResourceRequest.ANY) <= 0) {
         return 0;
@@ -682,20 +700,23 @@ public class FifoScheduler extends
         " capability=" + capability + " type=" + type);
 
     // TODO: A buggy application with this zero would crash the scheduler.
+    // 从内存资源角度计算该节点上容纳几份的任务
     int availableContainers =
         (int) (node.getUnallocatedResource().getMemorySize() /
                 capability.getMemorySize());
+    // 需求和可能，取其小者
     int assignedContainers =
       Math.min(assignableContainers, availableContainers);
 
     if (assignedContainers > 0) {
-      for (int i=0; i < assignedContainers; ++i) {
+      for (int i=0; i < assignedContainers; ++i) { // 逐一分配这些容器
 
         NodeId nodeId = node.getRMNode().getNodeID();
+        // 生成一个ID
         ContainerId containerId = BuilderUtils.newContainerId(application
             .getApplicationAttemptId(), application.getNewContainerId());
 
-        // Create the container
+        // Create the container，创建容器
         Container container = BuilderUtils.newContainer(containerId, nodeId,
             node.getRMNode().getHttpAddress(), capability,
             schedulerKey.getPriority(), null,
@@ -704,19 +725,22 @@ public class FifoScheduler extends
         // Allocate!
         
         // Inform the application
+        // FiCaSchedulerApp.allocate，为该容器创建RMContainerImpl对象
         RMContainer rmContainer = application.allocate(type, node, schedulerKey,
             container);
 
         // Inform the node
+        // 调整该节点上的容器和资源数量，并将此容器放入该节点的launchedContainers集合
         node.allocateContainer(rmContainer);
 
         // Update usage for this container
+        // 更新此容器的使用情况
         increaseUsedResources(rmContainer);
-      }
+      } // 完成一个容器的分配，继续循环
 
     }
     
-    return assignedContainers;
+    return assignedContainers;  // 返回分配的容器数量
   }
 
   private void increaseUsedResources(RMContainer rmContainer) {
@@ -858,7 +882,7 @@ public class FifoScheduler extends
       return;
     }
 
-    // Inform the application
+    // Inform the application 通知容器
     application.containerCompleted(rmContainer, containerStatus, event,
         RMNodeLabelsManager.NO_LABEL);
 
@@ -970,9 +994,10 @@ public class FifoScheduler extends
     if (node != null &&
         Resources.greaterThanOrEqual(resourceCalculator, getClusterResource(),
             node.getUnallocatedResource(), minimumAllocation)) {
+      // 若可供分配的资源达到了门槛值minimumAllocation，就分配容器
       LOG.debug("Node heartbeat " + nm.getNodeID() +
           " available resource = " + node.getUnallocatedResource());
-
+      // 分配容器，重点
       assignContainers(node);
 
       LOG.debug("Node after allocation " + nm.getNodeID() + " resource = "

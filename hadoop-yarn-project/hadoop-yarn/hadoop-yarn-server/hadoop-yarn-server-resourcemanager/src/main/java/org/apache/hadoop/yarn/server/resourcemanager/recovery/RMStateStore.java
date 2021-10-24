@@ -995,7 +995,7 @@ public abstract class RMStateStore extends AbstractService {
             resUsage.getResourceUsageSecondsMap(),
             attempMetrics.getPreemptedResourceSecondsMap(),
             attempMetrics.getTotalAllocatedContainers());
-
+    // 发出并处理STORE_APP_ATTEMPT事件
     getRMStateStoreEventHandler().handle(
       new RMStateStoreAppAttemptEvent(attemptState));
   }

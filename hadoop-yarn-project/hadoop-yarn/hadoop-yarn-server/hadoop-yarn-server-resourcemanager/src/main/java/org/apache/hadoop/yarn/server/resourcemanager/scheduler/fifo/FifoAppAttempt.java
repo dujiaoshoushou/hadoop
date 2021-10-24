@@ -68,6 +68,7 @@ public class FifoAppAttempt extends FiCaSchedulerApp {
       }
 
       // Create RMContainer
+      // 创建一个RMContainerImpl对象，作为该容器在RM节点上的代表
       RMContainer rmContainer = new RMContainerImpl(container,
           schedulerKey, this.getApplicationAttemptId(), node.getNodeID(),
           appSchedulingInfo.getUser(), this.rmContext, node.getPartition());
@@ -82,16 +83,17 @@ public class FifoAppAttempt extends FiCaSchedulerApp {
       liveContainers.put(containerId, rmContainer);
 
       // Update consumption and track allocations
+      // 已经分配了一个容器，对资源请求做相应调整
       ContainerRequest containerRequest = appSchedulingInfo.allocate(
           type, node, schedulerKey, container);
-
+      // 调整资源使用统计
       attemptResourceUsage.incUsed(node.getPartition(),
           container.getResource());
 
       // Update resource requests related to "request" and store in RMContainer
       ((RMContainerImpl) rmContainer).setContainerRequest(containerRequest);
 
-      // Inform the container
+      // Inform the container，通知rmContainer，处理RMContainerEventType.START事件
       rmContainer.handle(
           new RMContainerEvent(containerId, RMContainerEventType.START));
 

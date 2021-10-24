@@ -373,6 +373,7 @@ public abstract class AbstractYarnScheduler
     readLock.lock();
     try {
       // Get the application for the finished container
+      // 获取成品容器的应用
       SchedulerApplicationAttempt application =
           getCurrentAttemptForContainer(containerId);
       if (application == null) {
@@ -708,7 +709,7 @@ public abstract class AbstractYarnScheduler
           rmContainer, containerStatus, event);
     } else {
       ContainerId containerId = rmContainer.getContainerId();
-      // Inform the container
+      // Inform the container 通知容器，
       rmContainer.handle(
           new RMContainerFinishedEvent(containerId, containerStatus, event));
       SchedulerApplicationAttempt schedulerAttempt =
@@ -1021,9 +1022,11 @@ public abstract class AbstractYarnScheduler
    * @param nm The RMNode corresponding to the NodeManager
    * @param schedulerNode schedulerNode
    * @return list of completed containers
+   * 从 NodeManager 获取新容器列表并处理它们。
    */
   private List<ContainerStatus> updateNewContainerInfo(RMNode nm,
       SchedulerNode schedulerNode) {
+    // 来自前面的rmNode.nodeUpdateQueue
     List<UpdatedContainerInfo> containerInfoList = nm.pullContainerUpdates();
     List<ContainerStatus> newlyLaunchedContainers =
         new ArrayList<>();
@@ -1033,19 +1036,24 @@ public abstract class AbstractYarnScheduler
         new ArrayList<>();
 
     for(UpdatedContainerInfo containerInfo : containerInfoList) {
+      // 新发起
       newlyLaunchedContainers
           .addAll(containerInfo.getNewlyLaunchedContainers());
+      // 已结束
       completedContainers.addAll(containerInfo.getCompletedContainers());
+      // 更新
       updateExistContainers.addAll(containerInfo.getUpdateContainers());
     }
 
     // Processing the newly launched containers
+    // 对于每个新发起的容器
     for (ContainerStatus launchedContainer : newlyLaunchedContainers) {
       containerLaunchedOnNode(launchedContainer.getContainerId(),
           schedulerNode);
     }
 
     // Processing the newly increased containers
+    // 处理新增的容器
     List<Container> newlyIncreasedContainers =
         nm.pullNewlyIncreasedContainers();
     for (Container container : newlyIncreasedContainers) {
@@ -1093,6 +1101,7 @@ public abstract class AbstractYarnScheduler
    * @param nodeId NodeId corresponding to the NodeManager
    * @param schedulerNode schedulerNode
    * @return The total number of released containers
+   * 处理已完成的容器，并释放
    */
   private int updateCompletedContainers(List<ContainerStatus> completedContainers,
       Resource releasedResources, NodeId nodeId, SchedulerNode schedulerNode) {
@@ -1102,6 +1111,7 @@ public abstract class AbstractYarnScheduler
       ContainerId containerId = completedContainer.getContainerId();
       LOG.debug("Container FINISHED: {}", containerId);
       RMContainer container = getRMContainer(containerId);
+      // == FiCaSchedulerApp.completedContainer()
       completedContainer(container,
           completedContainer, RMContainerEventType.FINISHED);
       if (schedulerNode != null) {
@@ -1181,6 +1191,7 @@ public abstract class AbstractYarnScheduler
     }
 
     // Process completed containers
+    // 处理已经完成的容器，并释放
     Resource releasedResources = Resource.newInstance(0, 0);
     int releasedContainers = updateCompletedContainers(completedContainers,
         releasedResources, nm.getNodeID(), schedulerNode);

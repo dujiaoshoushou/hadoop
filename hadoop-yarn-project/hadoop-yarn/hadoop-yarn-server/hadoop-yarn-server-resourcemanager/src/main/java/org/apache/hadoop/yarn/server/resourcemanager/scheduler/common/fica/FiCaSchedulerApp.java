@@ -213,7 +213,7 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
       // Remove from the list of newly allocated containers if found
       newlyAllocatedContainers.remove(rmContainer);
 
-      // Inform the container
+      // Inform the container 这个事件就是RMContainerEventType.FINISHED
       rmContainer.handle(
           new RMContainerFinishedEvent(containerId, containerStatus, event));
 
@@ -225,6 +225,7 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
       if (partition != null && !partition.isEmpty()) {
         containerPartition = partition;
       }
+      // 获取该容器所占资源，即VCores和Memory
       Resource containerResource = rmContainer.getContainer().getResource();
       RMAuditLogger.logSuccess(getUser(), AuditConstants.RELEASE_CONTAINER,
           "SchedulerApp", getApplicationId(), containerId, containerResource,
@@ -233,6 +234,7 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
       // Update usage metrics
       queue.getMetrics().releaseResources(partition,
           getUser(), 1, containerResource);
+      // 释放容器所占资源
       attemptResourceUsage.decUsed(partition, containerResource);
 
       // Clear resource utilization metrics cache.

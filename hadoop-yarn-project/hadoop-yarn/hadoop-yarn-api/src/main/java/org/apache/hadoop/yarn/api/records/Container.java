@@ -82,12 +82,12 @@ public abstract class Container implements Comparable<Container> {
       String nodeHttpAddress, Resource resource, Priority priority,
       Token containerToken, ExecutionType executionType) {
     Container container = Records.newRecord(Container.class);
-    container.setId(containerId);
-    container.setNodeId(nodeId);
-    container.setNodeHttpAddress(nodeHttpAddress);
-    container.setResource(resource);
-    container.setPriority(priority);
-    container.setContainerToken(containerToken);
+    container.setId(containerId); // 记录块中有containerId
+    container.setNodeId(nodeId); // 记录块中有container所在节点的nodeId
+    container.setNodeHttpAddress(nodeHttpAddress); // 还有该节点的Http地址
+    container.setResource(resource); // 容器中所含的资源
+    container.setPriority(priority); // 优先级
+    container.setContainerToken(containerToken); // 用于访问控制的Token
     container.setExecutionType(executionType);
     return container;
   }

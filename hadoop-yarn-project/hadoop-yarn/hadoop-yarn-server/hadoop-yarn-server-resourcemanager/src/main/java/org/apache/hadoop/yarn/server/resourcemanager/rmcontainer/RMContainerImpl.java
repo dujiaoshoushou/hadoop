@@ -230,7 +230,7 @@ public class RMContainerImpl implements RMContainer {
       ApplicationAttemptId appAttemptId, NodeId nodeId, String user,
       RMContext rmContext, long creationTime, String nodeLabelExpression,
       boolean isExternallyAllocated) {
-    this.stateMachine = stateMachineFactory.make(this);
+    this.stateMachine = stateMachineFactory.make(this); // 构建该容器的状态机
     this.nodeId = nodeId;
     this.container = container;
     this.allocatedSchedulerKey = schedulerKey;

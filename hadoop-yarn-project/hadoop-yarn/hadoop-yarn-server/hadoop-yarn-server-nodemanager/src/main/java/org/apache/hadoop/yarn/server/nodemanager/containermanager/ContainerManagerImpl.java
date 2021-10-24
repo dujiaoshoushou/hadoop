@@ -969,7 +969,7 @@ public class ContainerManagerImpl extends CompositeService implements
               containerTokenIdentifier);
           startContainerInternal(containerTokenIdentifier, request,
               remoteUser);
-          succeededContainers.add(containerId);
+          succeededContainers.add(containerId); // 如果没有发生异常，那就是成功了。
         } catch (YarnException e) {
           failedContainers.put(containerId, SerializedException.newInstance(e));
         } catch (InvalidToken ie) {
@@ -979,10 +979,10 @@ public class ContainerManagerImpl extends CompositeService implements
         } catch (IOException e) {
           throw RPCUtil.getRemoteException(e);
         }
-      }
+      } // 对于请求中列举的所有容器
       return StartContainersResponse
           .newInstance(getAuxServiceMetaData(), succeededContainers,
-              failedContainers);
+              failedContainers); // 在返回的响应报文中将分别列举成功和失败的容器
     }
   }
 
@@ -1085,7 +1085,7 @@ public class ContainerManagerImpl extends CompositeService implements
 
     LOG.info("Start request for " + containerIdStr + " by user " + remoteUser);
 
-    ContainerLaunchContext launchContext = request.getContainerLaunchContext();
+    ContainerLaunchContext launchContext = request.getContainerLaunchContext(); // 从request中恢复出ContainerLaunchContext，即CLC
 
     // Sanity check for local resources
     for (Map.Entry<String, LocalResource> rsrc : launchContext
@@ -1109,7 +1109,7 @@ public class ContainerManagerImpl extends CompositeService implements
     Container container =
         new ContainerImpl(getConfig(), this.dispatcher,
             launchContext, credentials, metrics, containerTokenIdentifier,
-            context, containerStartTime);
+            context, containerStartTime); // 创建一个ContainerImpl，在NM节点上创建一个ContainerImpl对象
     ApplicationId applicationID =
         containerId.getApplicationAttemptId().getApplicationId();
     if (context.getContainers().putIfAbsent(containerId, container) != null) {
@@ -1132,7 +1132,7 @@ public class ContainerManagerImpl extends CompositeService implements
 
           Application application =
               new ApplicationImpl(dispatcher, user, flowContext,
-                  applicationID, credentials, context);
+                  applicationID, credentials, context); // 创建一个ApplicationImpl，注意这个dispatcher就是ContainerManagerImpl.dispatcher
           if (context.getApplications().putIfAbsent(applicationID,
               application) == null) {
             LOG.info("Creating a new application reference for app "
@@ -1144,6 +1144,7 @@ public class ContainerManagerImpl extends CompositeService implements
             context.getNMStateStore().storeApplication(applicationID,
                 buildAppProto(applicationID, user, credentials, appAcls,
                     logAggregationContext, flowContext));
+            // 产生一个INIT_APPLICATION事件，用来触发这个ApplicationImpl的状态机，把Container交个ApplicationImpl
             dispatcher.getEventHandler().handle(new ApplicationInitEvent(
                 applicationID, appAcls, logAggregationContext));
           }
@@ -1185,8 +1186,8 @@ public class ContainerManagerImpl extends CompositeService implements
           "ContainerManageImpl", applicationID, containerId);
         // TODO launchedContainer misplaced -> doesn't necessarily mean a container
         // launch. A finished Application will not launch containers.
-        metrics.launchedContainer();
-        metrics.allocateContainer(containerTokenIdentifier.getResource());
+        metrics.launchedContainer(); // 用于统计目的
+        metrics.allocateContainer(containerTokenIdentifier.getResource()); // 用于统计目的
       } else {
         throw new YarnException(
             "Container start failed as the NodeManager is " +
