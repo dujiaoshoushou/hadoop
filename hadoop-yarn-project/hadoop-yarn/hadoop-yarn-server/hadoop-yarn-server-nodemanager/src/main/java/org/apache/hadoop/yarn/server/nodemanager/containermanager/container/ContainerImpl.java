@@ -1171,14 +1171,14 @@ public class ContainerImpl implements Container {
     @Override
     public ContainerState transition(ContainerImpl container,
         ContainerEvent event) {
-      if (container.recoveredStatus == RecoveredContainerStatus.COMPLETED) {
-        container.sendFinishedEvents();
+      if (container.recoveredStatus == RecoveredContainerStatus.COMPLETED) { // 容器的恢复已经完成（以前保存了容器内容，但是执行失败，需要重执）
+        container.sendFinishedEvents(); // 发送ApplicationContainerFinishedEvent等事件
         return ContainerState.DONE;
       } else if (container.recoveredStatus == RecoveredContainerStatus.QUEUED) {
         return ContainerState.SCHEDULED;
       } else if (container.recoveredAsKilled &&
           container.recoveredStatus == RecoveredContainerStatus.REQUESTED) {
-        // container was killed but never launched
+        // container was killed but never launched，要求恢复的容器已被kill
         container.metrics.killedContainer();
         NMAuditLogger.logSuccess(container.user,
             AuditConstants.FINISH_KILLED_CONTAINER, "ContainerImpl",
@@ -1186,22 +1186,24 @@ public class ContainerImpl implements Container {
             container.containerId);
         container.metrics.releaseContainer(
             container.containerTokenIdentifier.getResource());
-        container.sendFinishedEvents();
+        container.sendFinishedEvents(); // 发送ApplicationContainerFinishedEvent等事件
         return ContainerState.DONE;
       }
 
-      final ContainerLaunchContext ctxt = container.launchContext;
-      container.metrics.initingContainer();
+      final ContainerLaunchContext ctxt = container.launchContext; // 这是容器发起上下文CLC
+      container.metrics.initingContainer(); // 为统计目的
 
       container.dispatcher.getEventHandler().handle(new AuxServicesEvent
-          (AuxServicesEventType.CONTAINER_INIT, container));
+          (AuxServicesEventType.CONTAINER_INIT, container)); // 向AuxServices发送CONTAINER_INIT，AuxServices是一些可通过配置项加以配置的辅助性服务
 
       // Inform the AuxServices about the opaque serviceData
+      // 从CLC中获取辅助服务数据csd
       Map<String,ByteBuffer> csd = ctxt.getServiceData();
       if (csd != null) {
         // This can happen more than once per Application as each container may
-        // have distinct service data
+        // have distinct service data，同一应用的不同容器可能有不同的辅助服务数据
         for (Map.Entry<String,ByteBuffer> service : csd.entrySet()) {
+          // 为每一项辅助服务数据项AuServices发送APPLICATION_INIT事件
           container.dispatcher.getEventHandler().handle(
               new AuxServicesEvent(AuxServicesEventType.APPLICATION_INIT,
                   container.user, container.containerId
@@ -1212,17 +1214,17 @@ public class ContainerImpl implements Container {
 
       container.containerLocalizationStartTime = clock.getTime();
 
-      // Send requests for public, private resources
+      // Send requests for public, private resources，发送资源请求
       Map<String, LocalResource> cntrRsrc;
       try {
         cntrRsrc = container.context
-            .getContainerExecutor().getLocalResources(container);
-        if (!cntrRsrc.isEmpty()) {
+            .getContainerExecutor().getLocalResources(container); // 从CLC获取本地资源
+        if (!cntrRsrc.isEmpty()) { // 有资源请求
           Map<LocalResourceVisibility, Collection<LocalResourceRequest>> req =
               container.resourceSet.addResources(ctxt.getLocalResources());
           container.dispatcher.getEventHandler().handle(
-              new ContainerLocalizationRequestEvent(container, req));
-          return ContainerState.LOCALIZING;
+              new ContainerLocalizationRequestEvent(container, req)); // 将资源本地化请求作为一个事件发送给ResourceLocalizationService，== ResourceLocalizationService.handle(e)
+          return ContainerState.LOCALIZING; // ContainerImpl转入LOCALIZING状态
         } else {
           container.sendScheduleEvent();
           container.metrics.endInitingContainer();
@@ -1253,7 +1255,7 @@ public class ContainerImpl implements Container {
       Path location = rsrcEvent.getLocation();
       Set<String> syms =
           container.resourceSet.resourceLocalized(resourceRequest, location);
-      if (null == syms) {
+      if (null == syms) { // 如果syms非空，则同志仍须努力
         LOG.info("Localized resource " + resourceRequest +
             " for container " + container.containerId);
         return ContainerState.LOCALIZING;
@@ -1273,8 +1275,8 @@ public class ContainerImpl implements Container {
           new ContainerLocalizationEvent(LocalizationEventType.
               CONTAINER_RESOURCES_LOCALIZED, container));
 
-      container.sendScheduleEvent();
-      container.metrics.endInitingContainer();
+      container.sendScheduleEvent(); // 发出可有调度使用本地化资源的事件
+      container.metrics.endInitingContainer(); // 用于统计目的
 
       // If this is a recovered container that has already launched, skip
       // uploading resources to the shared cache. We do this to avoid uploading
@@ -1293,7 +1295,7 @@ public class ContainerImpl implements Container {
                 SharedCacheUploadEventType.UPLOAD));
       }
 
-      return ContainerState.SCHEDULED;
+      return ContainerState.SCHEDULED; // 大功告成，该容器的所请求的资源都已本地化
     }
   }
 

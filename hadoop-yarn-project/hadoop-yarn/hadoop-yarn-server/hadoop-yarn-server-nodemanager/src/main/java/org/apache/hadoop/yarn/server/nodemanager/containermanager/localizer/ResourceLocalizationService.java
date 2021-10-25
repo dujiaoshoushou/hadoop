@@ -463,14 +463,17 @@ public class ResourceLocalizationService extends CompositeService
   /**
    * Handle event received the first time any container is scheduled
    * by a given application.
+   * 给定应用程序第一次调度任何容器时收到的处理事件。
    */
   @SuppressWarnings("unchecked")
   private void handleInitApplicationResources(Application app) {
     // 0) Create application tracking structs
     String userName = app.getUser();
+    // 创建一个LocalResourcesTrackerImpl对象，并将其放在privateRsrc集合中
     privateRsrc.putIfAbsent(userName, new LocalResourcesTrackerImpl(userName,
         null, dispatcher, true, super.getConfig(), stateStore, dirsHandler));
     String appIdStr = app.getAppId().toString();
+    // 在创建一个LocalResourcesTrackerImpl对象，并将其放在appRsrc集合中
     appRsrc.putIfAbsent(appIdStr, new LocalResourcesTrackerImpl(app.getUser(),
         app.getAppId(), dispatcher, false, super.getConfig(), stateStore,
         dirsHandler));
@@ -478,6 +481,7 @@ public class ResourceLocalizationService extends CompositeService
     //
     // This is handled by the ApplicationImpl state machine and allows
     // containers to proceed with launching.
+    // 实际上是ApplicationEventType.APPLICATION_INITED
     dispatcher.getEventHandler().handle(new ApplicationInitedEvent(
           app.getAppId()));
   }
@@ -498,14 +502,14 @@ public class ResourceLocalizationService extends CompositeService
           + " state, do not localize resources.");
       return;
     }
-    // create a loading cache for the file statuses
+    // create a loading cache for the file statuses 建立一个缓存
     LoadingCache<Path,Future<FileStatus>> statCache =
         CacheBuilder.newBuilder().build(FSDownload.createStatusCacheLoader(getConfig()));
     LocalizerContext ctxt = new LocalizerContext(
-        c.getUser(), c.getContainerId(), c.getCredentials(), statCache);
+        c.getUser(), c.getContainerId(), c.getCredentials(), statCache); // 从容器中获取相关信息，联调缓存机制一起创建一个本地化上下文LocalizerContext
     // 获取所请求的资源清单
     Map<LocalResourceVisibility, Collection<LocalResourceRequest>> rsrcs =
-      rsrcReqs.getRequestedResources();
+      rsrcReqs.getRequestedResources(); // 将搭载在事件上的资源请求转移到一个Map中
     for (Map.Entry<LocalResourceVisibility, Collection<LocalResourceRequest>> e :
          rsrcs.entrySet()) {
       // 对于要求本地化的每种不同可见度的资源（资源集合中的每个二元组），tracker是个EventHandler
@@ -513,7 +517,7 @@ public class ResourceLocalizationService extends CompositeService
           getLocalResourcesTracker(e.getKey(), c.getUser(),
               c.getContainerId().getApplicationAttemptId()
                   .getApplicationId());
-      for (LocalResourceRequest req : e.getValue()) { // 对于其中的每项资源，调用EventHandler的handle()函数
+      for (LocalResourceRequest req : e.getValue()) { // 对于其中的每项资源，调用EventHandler的handle()函数，对于相同可见性的每一项资源
         tracker.handle(new ResourceRequestEvent(req, e.getKey(), ctxt));
         LOG.debug("Localizing {} for container {}",
             req.getPath(), c.getContainerId());
@@ -680,11 +684,11 @@ public class ResourceLocalizationService extends CompositeService
     switch (visibility) {
       default:
       case PUBLIC:
-        return publicRsrc;
+        return publicRsrc; // 这是对公共资源的LocalResourceTrackerImpl
       case PRIVATE:
-        return privateRsrc.get(user);
+        return privateRsrc.get(user); // 每个用户都有自己的LocalResourcesTrackerImpl
       case APPLICATION:
-        return appRsrc.get(appId.toString());
+        return appRsrc.get(appId.toString()); // 每个App都有各自的资源跟踪者
     }
   }
 
@@ -777,19 +781,19 @@ public class ResourceLocalizationService extends CompositeService
     public void handle(LocalizerEvent event) {
       String locId = event.getLocalizerId();
       switch (event.getType()) {
-      case REQUEST_RESOURCE_LOCALIZATION:
+      case REQUEST_RESOURCE_LOCALIZATION: // 资源本地化请求
         // 0) find running localizer or start new thread
         LocalizerResourceRequestEvent req =
           (LocalizerResourceRequestEvent)event; // 被当成LocalizerEvent的event还原成LocalizerResourceRequestEvent
         switch (req.getVisibility()) {
-        case PUBLIC:
-          publicLocalizer.addResource(req);
+        case PUBLIC: // 公共资源
+          publicLocalizer.addResource(req); // 公共资源的本地化交由publicLocalizer线程完成
           break;
-        case PRIVATE:
+        case PRIVATE: // 非公共资源
         case APPLICATION:
           synchronized (privLocalizers) {
-            LocalizerRunner localizer = privLocalizers.get(locId);
-            if (localizer != null && localizer.killContainerLocalizer.get()) {
+            LocalizerRunner localizer = privLocalizers.get(locId); // 获取非公共资源本地化线程
+            if (localizer != null && localizer.killContainerLocalizer.get()) { // 如果尚未创建则加以创建
               // Old localizer thread has been stopped, remove it and create
               // a new localizer thread.
               LOG.info("New " + event.getType() + " localize request for "
@@ -809,7 +813,7 @@ public class ResourceLocalizationService extends CompositeService
                 break;
               }
               LOG.info("Created localizer for " + locId);
-              localizer = new LocalizerRunner(req.getContext(), locId); // 这里是一个线程，负责实施资源本地化
+              localizer = new LocalizerRunner(req.getContext(), locId); // 这里是一个线程，负责实施资源本地化，创建非公共资源本地化线程
               privLocalizers.put(locId, localizer);
               localizer.start();
             }
@@ -862,8 +866,8 @@ public class ResourceLocalizationService extends CompositeService
 
     final FileContext lfs;
     final Configuration conf;
-    final ExecutorService threadPool;
-    final CompletionService<Path> queue;
+    final ExecutorService threadPool; // 线程池
+    final CompletionService<Path> queue; // 等待被线程池的线程加以执行的队列
     // Its shared between public localizer and dispatcher thread.
     final Map<Future<Path>,LocalizerResourceRequestEvent> pending;
 
@@ -889,6 +893,12 @@ public class ResourceLocalizationService extends CompositeService
        * 2) We are able to acquire non blocking semaphore lock.
        * If not we will skip this resource as either it is getting downloaded
        * or it FAILED / LOCALIZED.
+       * 这里多个容器可能请求相同的资源。所以我们需要
+       * 只有当
+       *  1) ResourceState == DOWNLOADING
+       *  2) 我们能够获得非阻塞信号量锁时才开始下载。
+       * 如果不是，我们将跳过此资源，因为它正在下载
+       *  或失败/本地化。
        */
 
       if (rsrc.tryAcquire()) {
@@ -918,10 +928,14 @@ public class ResourceLocalizationService extends CompositeService
 
             // explicitly synchronize pending here to avoid future task
             // completing and being dequeued before pending updated
+            // FSDownload是个Callable，是供线程调用的模块
+            // 由线程池中的线程加以调用，逻辑上可以视作线程
+            // CompletionService.submit，作为Future任务提交，等待被调用
+            //  pending.put 放在待完成的Future任务集合中，等待器完成并返回结果
             synchronized (pending) {
               pending.put(queue.submit(new FSDownload(lfs, null, conf,
                   publicDirDestPath, resource, request.getContext().getStatCache())),
-                  request);
+                  request); // 创建一个FSDownload对象，将其提交到队列queue中，再放入pending队列
             }
           } catch (IOException e) {
             rsrc.unlock();
@@ -977,8 +991,8 @@ public class ResourceLocalizationService extends CompositeService
         // TODO shutdown, better error handling esp. DU
         while (!Thread.currentThread().isInterrupted()) {
           try {
-            Future<Path> completed = queue.take();
-            LocalizerResourceRequestEvent assoc = pending.remove(completed);
+            Future<Path> completed = queue.take(); // 等待 CompletionService队列中有任务完成
+            LocalizerResourceRequestEvent assoc = pending.remove(completed); // 从Future集合pending中摘除，并获取相关联的本地化请求
             try {
               if (null == assoc) {
                 LOG.error("Localized unknown resource to " + completed);
@@ -988,7 +1002,7 @@ public class ResourceLocalizationService extends CompositeService
               Path local = completed.get();
               LocalResourceRequest key = assoc.getResource().getRequest();
               publicRsrc.handle(new ResourceLocalizedEvent(key, local, FileUtil
-                .getDU(new File(local.toUri()))));
+                .getDU(new File(local.toUri())))); //LOCALIZED事件驱动LocalResourcesTrackerImpl的状态机
               assoc.getResource().unlock();
             } catch (ExecutionException e) {
               String user = assoc.getContext().getUser();
@@ -1263,6 +1277,7 @@ public class ResourceLocalizationService extends CompositeService
         // 1) write credentials to private dir
         writeCredentials(nmPrivateCTokensPath);
         // 2) exec initApplication and wait
+        // exec是一个ContainerExecutor，这是抽象类型，其实际类型取决于配置文件
         if (dirsHandler.areDisksHealthy()) {
           exec.startLocalizer(new LocalizerStartContext.Builder()
               .setNmPrivateContainerTokens(nmPrivateCTokensPath)

@@ -229,7 +229,7 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
       // LocalizerResourceRequestEvent 创建（其实是重新构造）一个LocalizerResourceRequestEvent事件
       rsrc.dispatcher.getEventHandler().handle(
           new LocalizerResourceRequestEvent(rsrc, req.getVisibility(), ctxt, 
-              req.getLocalResourceRequest().getPattern())); // 并处理这个事件
+              req.getLocalResourceRequest().getPattern())); // 并处理这个事件 == ResouceLocalizationService.handle(e),用这个事件想ResouceLocalizationService提出请求
     }
   }
 
@@ -240,14 +240,14 @@ public class LocalizedResource implements EventHandler<ResourceEvent> {
   private static class FetchSuccessTransition extends ResourceTransition {
     @Override
     public void transition(LocalizedResource rsrc, ResourceEvent event) {
-      ResourceLocalizedEvent locEvent = (ResourceLocalizedEvent) event;
+      ResourceLocalizedEvent locEvent = (ResourceLocalizedEvent) event; // 这实际上是个ResourceLocalizedEvent对象
       rsrc.localPath =
-          Path.getPathWithoutSchemeAndAuthority(locEvent.getLocation());
+          Path.getPathWithoutSchemeAndAuthority(locEvent.getLocation()); // 搭载在ResourceLocalizedEvent上的资源路径名是个带SchemeAndAuthority的URI，现在从中抽取文件路径名的那一部分
       rsrc.size = locEvent.getSize();
-      for (ContainerId container : rsrc.ref) {
+      for (ContainerId container : rsrc.ref) { // 给所涉及的每个容器发送一个ContainerEventType.RESOURCE_LOCALIZED事件
         rsrc.dispatcher.getEventHandler().handle(
             new ContainerResourceLocalizedEvent(
-              container, rsrc.rsrc, rsrc.localPath));
+              container, rsrc.rsrc, rsrc.localPath)); // 用此事件驱动ContainerImpl的状态机
       }
     }
   }

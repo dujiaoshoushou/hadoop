@@ -77,22 +77,22 @@ public class ResourceSet {
     List<LocalResourceRequest> privateList = new ArrayList<>();
     List<LocalResourceRequest> appList = new ArrayList<>();
 
-    for (Map.Entry<String, LocalResource> rsrc : localResourceMap.entrySet()) {
+    for (Map.Entry<String, LocalResource> rsrc : localResourceMap.entrySet()) { // 对于其中的每一项资源
       LocalResource resource = rsrc.getValue();
-      LocalResourceRequest req = new LocalResourceRequest(rsrc.getValue());
+      LocalResourceRequest req = new LocalResourceRequest(rsrc.getValue()); // 创建LocalResourceRequest对象
       allResources.putIfAbsent(req, new HashSet<>());
       allResources.get(req).add(rsrc.getKey());
       storeSharedCacheUploadPolicy(req,
           resource.getShouldBeUploadedToSharedCache());
       switch (resource.getVisibility()) {
       case PUBLIC:
-        publicList.add(req);
+        publicList.add(req); // 这是公共资源
         break;
       case PRIVATE:
-        privateList.add(req);
+        privateList.add(req); // 这是本容器的专用资源
         break;
       case APPLICATION:
-        appList.add(req);
+        appList.add(req); // 这是由本应用所属容器共享的App资源
         break;
       default:
         break;
@@ -102,18 +102,18 @@ public class ResourceSet {
         new LinkedHashMap<>();
     if (!publicList.isEmpty()) {
       publicRsrcs.addAll(publicList);
-      req.put(LocalResourceVisibility.PUBLIC, publicList);
+      req.put(LocalResourceVisibility.PUBLIC, publicList); // 填写公共资源请求
     }
     if (!privateList.isEmpty()) {
       privateRsrcs.addAll(privateList);
-      req.put(LocalResourceVisibility.PRIVATE, privateList);
+      req.put(LocalResourceVisibility.PRIVATE, privateList); // 填写专用资源请求
     }
     if (!appList.isEmpty()) {
       appRsrcs.addAll(appList);
-      req.put(LocalResourceVisibility.APPLICATION, appList);
+      req.put(LocalResourceVisibility.APPLICATION, appList); // 填写App资源请求
     }
     if (!allResources.isEmpty()) {
-      this.pendingResources.putAll(allResources);
+      this.pendingResources.putAll(allResources); // 放入pendingResources集合中
     }
     return req;
   }
@@ -126,12 +126,12 @@ public class ResourceSet {
    */
   public Set<String> resourceLocalized(LocalResourceRequest request,
       Path location) {
-    Set<String> symlinks = pendingResources.remove(request);
+    Set<String> symlinks = pendingResources.remove(request); // 将事件中所载已完成本地化的资源（可有多项）从pendingResources集合中摘除
     if (symlinks == null) {
       return null;
     } else {
       for (String symlink : symlinks) {
-        localizedResources.put(symlink, location);
+        localizedResources.put(symlink, location); // 加入到localizedResources中
       }
       return symlinks;
     }

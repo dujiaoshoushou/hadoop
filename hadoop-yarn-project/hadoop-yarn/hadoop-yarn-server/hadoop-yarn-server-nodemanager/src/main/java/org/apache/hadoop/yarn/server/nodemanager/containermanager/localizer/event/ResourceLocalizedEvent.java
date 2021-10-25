@@ -27,7 +27,7 @@ public class ResourceLocalizedEvent extends ResourceEvent {
 
   public ResourceLocalizedEvent(LocalResourceRequest rsrc, Path location,
       long size) {
-    super(rsrc, ResourceEventType.LOCALIZED);
+    super(rsrc, ResourceEventType.LOCALIZED); // 表示本项资源本地化已经完成
     this.size = size;
     this.location = location;
   }

@@ -73,10 +73,13 @@ public class FSDownload implements Callable<Path> {
   private FileContext files;
   private final UserGroupInformation userUgi;
   private Configuration conf;
-  private LocalResource resource;
+  private LocalResource resource; // 代表着需要加以本地化的资源，是作为参数传下来的
   private final LoadingCache<Path,Future<FileStatus>> statCache;
   
-  /** The local FS dir path under which this resource is to be localized to */
+  /** The local FS dir path under which this resource is to be localized to
+   * 这个目标路径是在创建对象时作为参数传下来的
+   * 资源的源路径则是在resource中，可通过resource.getResource()获取
+   * */
   private Path destDirPath;
 
   private static final FsPermission cachePerms = new FsPermission(
@@ -393,6 +396,7 @@ public class FSDownload implements Callable<Path> {
   public Path call() throws Exception {
     final Path sCopy;
     try {
+      // 获取该项公共资源的源路径
       sCopy = resource.getResource().toPath();
     } catch (URISyntaxException e) {
       throw new IOException("Invalid resource", e);
@@ -401,10 +405,14 @@ public class FSDownload implements Callable<Path> {
     LOG.debug("Starting to download {} {} {}", sCopy,
         resource.getType(), resource.getPattern());
 
-    final Path destinationTmp = new Path(destDirPath + "_tmp");
-    createDir(destinationTmp, cachePerms);
+    final Path destinationTmp = new Path(destDirPath + "_tmp"); // 加后缀_tmp作为工作目录名
+    createDir(destinationTmp, cachePerms); // 创建目标目录
     Path dFinal =
-        files.makeQualified(new Path(destinationTmp, sCopy.getName()));
+        files.makeQualified(new Path(destinationTmp, sCopy.getName())); // 目标文件名
+    /**
+     * 实际文件复制。如果有userUgi，就通过doAs()以具体用户的权限执行
+     * 不管是否通过userUgi.doAs()执行，这里的核心就是copy(),即文件的复制
+     */
     try {
       if (userUgi == null) {
         verifyAndCopy(dFinal);
@@ -418,7 +426,7 @@ public class FSDownload implements Callable<Path> {
         });
       }
       changePermissions(dFinal.getFileSystem(conf), dFinal);
-      files.rename(destinationTmp, destDirPath, Rename.OVERWRITE);
+      files.rename(destinationTmp, destDirPath, Rename.OVERWRITE); // 更改工作文件名
 
       LOG.debug("File has been downloaded to {} from {}",
           new Path(destDirPath, sCopy.getName()), sCopy);
@@ -436,7 +444,7 @@ public class FSDownload implements Callable<Path> {
       conf = null;
       resource = null;
     }
-    return files.makeQualified(new Path(destDirPath, sCopy.getName()));
+    return files.makeQualified(new Path(destDirPath, sCopy.getName())); // 返回本地的目标目录路径+文件名
   }
 
   /**

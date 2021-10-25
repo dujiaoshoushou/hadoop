@@ -131,7 +131,7 @@ class LocalResourcesTrackerImpl implements LocalResourcesTracker {
    */
   @Override
   public synchronized void handle(ResourceEvent event) {
-    LocalResourceRequest req = event.getLocalResourceRequest();
+    LocalResourceRequest req = event.getLocalResourceRequest(); // 从事件中抽取资源请求
     LocalizedResource rsrc = localrsrc.get(req); // rsrc是个LocalizedResource对象，localrsrc是个Map，记载着已知的LocalizedResource
     switch (event.getType()) {
     case LOCALIZED:
@@ -146,8 +146,8 @@ class LocalResourcesTrackerImpl implements LocalResourcesTracker {
         removeResource(req);
         rsrc = null;
       }
-      if (null == rsrc) { // 如果map中还没有记载此项资源
-        rsrc = new LocalizedResource(req, dispatcher);
+      if (null == rsrc) { // 如果map中还没有记载此项资源，尚未创建LocalizedResource
+        rsrc = new LocalizedResource(req, dispatcher); // 创建一个LocalizedResource对象
         localrsrc.put(req, rsrc); // 就创建一项记载
       }
       break;
@@ -185,7 +185,7 @@ class LocalResourcesTrackerImpl implements LocalResourcesTracker {
           + " but localized resource is missing");
       return;
     }
-    rsrc.handle(event); // 所以实际上是LocalizedResourcehandle()
+    rsrc.handle(event); // 所以实际上是LocalizedResourcehandle()，向LocalizedResource转交该事件
 
     // Remove the resource if its downloading and its reference count has
     // become 0 after RELEASE. This maybe because a container was killed while

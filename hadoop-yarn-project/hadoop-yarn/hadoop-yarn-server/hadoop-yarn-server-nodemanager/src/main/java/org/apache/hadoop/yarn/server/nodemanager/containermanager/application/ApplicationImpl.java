@@ -460,7 +460,7 @@ public class ApplicationImpl implements Application {
       ApplicationContainerInitEvent initEvent =
         (ApplicationContainerInitEvent) event;
       Container container = initEvent.getContainer();
-      app.containers.put(container.getContainerId(), container);
+      app.containers.put(container.getContainerId(), container); // 将container放在这ApplicationImpl的containers集合中
       LOG.info("Adding " + container.getContainerId()
           + " to application " + app.toString());
 
@@ -492,9 +492,10 @@ public class ApplicationImpl implements Application {
     @Override
     public void transition(ApplicationImpl app, ApplicationEvent event) {
       // Start all the containers waiting for ApplicationInit
-      for (Container container : app.containers.values()) {
+      // 启动所有等待 ApplicationInit 的容器
+      for (Container container : app.containers.values()) { // 对于containers集合中的每个容器
         app.dispatcher.getEventHandler().handle(new ContainerInitEvent(
-              container.getContainerId()));
+              container.getContainerId())); // 产生一个INIT_CONTAINER事件，并驱动该容器的状态机
       }
     }
   }
