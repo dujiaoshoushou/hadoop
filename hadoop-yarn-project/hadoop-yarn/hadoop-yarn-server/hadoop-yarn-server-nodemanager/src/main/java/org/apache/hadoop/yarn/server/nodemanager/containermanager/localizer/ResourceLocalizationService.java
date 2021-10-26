@@ -1155,7 +1155,7 @@ public class ResourceLocalizationService extends CompositeService
     LocalizerHeartbeatResponse processHeartbeat(
         List<LocalResourceStatus> remoteResourceStatuses) {
       LocalizerHeartbeatResponse response =
-        recordFactory.newRecordInstance(LocalizerHeartbeatResponse.class);
+        recordFactory.newRecordInstance(LocalizerHeartbeatResponse.class); // 生成一个有待填写具体内容的心跳响应
       String user = context.getUser();
       ApplicationId applicationId =
           context.getContainerId().getApplicationAttemptId().getApplicationId();
@@ -1226,21 +1226,22 @@ public class ResourceLocalizationService extends CompositeService
         return response;
       }
 
-      // Give the localizer resources for remote-fetching.
+      // Give the localizer resources for remote-fetching.资源描述集合
       List<ResourceLocalizationSpec> rsrcs =
           new ArrayList<ResourceLocalizationSpec>();
 
       /*
        * TODO : It doesn't support multiple downloads per ContainerLocalizer
        * at the same time. We need to think whether we should support this.
+       * 查找下一个资源
        */
       ResourceLocalizationSpec next = findNextResource(user, applicationId);
-      if (next != null) {
+      if (next != null) { // 资源存在，将资源描述加入rsrcs集合
         rsrcs.add(next);
       }
 
       response.setLocalizerAction(LocalizerAction.LIVE);
-      response.setResourceSpecs(rsrcs);
+      response.setResourceSpecs(rsrcs); // 把这些资源描述搭载在心跳响应上
       return response;
     }
 

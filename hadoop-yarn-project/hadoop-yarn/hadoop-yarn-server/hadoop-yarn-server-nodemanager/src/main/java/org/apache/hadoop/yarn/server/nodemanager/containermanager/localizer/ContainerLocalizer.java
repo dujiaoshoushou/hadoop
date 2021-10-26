@@ -103,14 +103,14 @@ public class ContainerLocalizer {
       new FsPermission((short) 0755);
   public static final String CSI_VOLIUME_MOUNTS_ROOT = "csivolumes";
 
-  private final String user;
-  private final String appId;
-  private final List<Path> localDirs;
+  private final String user; // 容器所属的用户
+  private final String appId; // 容器所属的App
+  private final List<Path> localDirs; // 有关的本地目录
   private final String localizerId;
   private final FileContext lfs;
   private final Configuration conf;
   private final RecordFactory recordFactory;
-  private final Map<LocalResource,Future<Path>> pendingResources;
+  private final Map<LocalResource,Future<Path>> pendingResources; // 有待本地化的资源
   private final String appCacheDirContextName;
   private final DiskValidator diskValidator;
 
@@ -148,6 +148,11 @@ public class ContainerLocalizer {
     return new YarnConfiguration();
   }
 
+  /**
+   * 资源本地化常常涉及快节点操作
+   * @param nmAddr
+   * @return
+   */
   @Private
   @VisibleForTesting
   public LocalizationProtocol getProxy(final InetSocketAddress nmAddr) {
@@ -180,11 +185,12 @@ public class ContainerLocalizer {
     UserGroupInformation remoteUser =
       UserGroupInformation.createRemoteUser(user);
     remoteUser.addToken(creds.getToken(LocalizerTokenIdentifier.KIND));
+    // 获取通向对方NodeManager的Proxy
     final LocalizationProtocol nodeManager =
         remoteUser.doAs(new PrivilegedAction<LocalizationProtocol>() {
           @Override
           public LocalizationProtocol run() {
-            return getProxy(nmAddr);
+            return getProxy(nmAddr); // 返回LocalizationProtocolPBClientImpl
           }
         });
 
@@ -197,8 +203,8 @@ public class ContainerLocalizer {
 
     ExecutorService exec = null;
     try {
-      exec = createDownloadThreadPool();
-      CompletionService<Path> ecs = createCompletionService(exec);
+      exec = createDownloadThreadPool(); // 创建ExecutorService线程池
+      CompletionService<Path> ecs = createCompletionService(exec); // 在线程池基础上创建CompletionService，用来接受和运行callable
       localizeFiles(nodeManager, ecs, ugi);
     } catch (Throwable e) {
       throw new IOException(e);
@@ -249,6 +255,14 @@ public class ContainerLocalizer {
 
   }
 
+  /**
+   * 创建Callable对象FSDownload
+   * @param destDirPath
+   * @param rsrc
+   * @param ugi
+   * @return
+   * @throws IOException
+   */
   Callable<Path> download(Path destDirPath, LocalResource rsrc,
       UserGroupInformation ugi) throws IOException {
     // For private localization FsDownload creates folder in destDirPath. Parent
@@ -306,20 +320,20 @@ public class ContainerLocalizer {
       throws IOException, YarnException {
     while (true) {
       try {
-        LocalizerStatus status = createStatus();
-        LocalizerHeartbeatResponse response = nodemanager.heartbeat(status);
-        switch (response.getLocalizerAction()) {
-        case LIVE:
+        LocalizerStatus status = createStatus(); // 逐项列出彼岸节点的资源要求
+        LocalizerHeartbeatResponse response = nodemanager.heartbeat(status); // 通过PB和RPC机制想对方发生心跳
+        switch (response.getLocalizerAction()) { // 根据对方回应分情形处理
+        case LIVE: // 对方还活着
           List<ResourceLocalizationSpec> newRsrcs = response.getResourceSpecs();
-          for (ResourceLocalizationSpec newRsrc : newRsrcs) {
+          for (ResourceLocalizationSpec newRsrc : newRsrcs) { // 对于彼岸发回的每项资源描述
             if (!pendingResources.containsKey(newRsrc.getResource())) {
               pendingResources.put(newRsrc.getResource(), cs.submit(download(
                 new Path(newRsrc.getDestinationDirectory().getFile()),
-                newRsrc.getResource(), ugi)));
+                newRsrc.getResource(), ugi))); // 创建Callable对象FSDownload，将其提交给CompletionService，使其作为Future任务执行，并放在pendingResources集合中
             }
           }
           break;
-        case DIE:
+        case DIE: // 对方已死
           // killall running localizations
           for (Future<Path> pending : pendingResources.values()) {
             pending.cancel(true);
@@ -336,7 +350,7 @@ public class ContainerLocalizer {
           }
           return;
         }
-        cs.poll(1000, TimeUnit.MILLISECONDS);
+        cs.poll(1000, TimeUnit.MILLISECONDS); // 睡眠直至cs中有Future任务完成或超时
       } catch (InterruptedException e) {
         return;
       } catch (YarnException e) {

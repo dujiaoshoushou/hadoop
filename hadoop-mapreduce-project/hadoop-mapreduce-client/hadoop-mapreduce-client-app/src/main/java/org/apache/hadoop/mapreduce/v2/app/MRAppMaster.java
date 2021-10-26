@@ -191,9 +191,9 @@ public class MRAppMaster extends CompositeService {
   private final long startTime;
   private final long appSubmitTime;
   private String appName;
-  private final ApplicationAttemptId appAttemptID;
-  private final ContainerId containerID;
-  private final String nmHost;
+  private final ApplicationAttemptId appAttemptID; // MRAppmaster对象所代表的ApplicationAttempt
+  private final ContainerId containerID; // 所投运的容器
+  private final String nmHost; // 所在节点的主机名
   private final int nmPort;
   private final int nmHttpPort;
   protected final MRAppMetrics metrics;
@@ -1642,7 +1642,7 @@ public class MRAppMaster extends CompositeService {
       mainStarted = true;
       Thread.setDefaultUncaughtExceptionHandler(new YarnUncaughtExceptionHandler());
       String containerIdStr =
-          System.getenv(Environment.CONTAINER_ID.name());
+          System.getenv(Environment.CONTAINER_ID.name()); // 通过环境变量CONTAINER_ID传递containerId字符串
       String nodeHostString = System.getenv(Environment.NM_HOST.name());
       String nodePortString = System.getenv(Environment.NM_PORT.name());
       String nodeHttpPortString =
@@ -1674,8 +1674,8 @@ public class MRAppMaster extends CompositeService {
               Integer.parseInt(nodePortString),
               Integer.parseInt(nodeHttpPortString), appSubmitTime);
       ShutdownHookManager.get().addShutdownHook(
-        new MRAppMasterShutdownHook(appMaster), SHUTDOWN_HOOK_PRIORITY);
-      JobConf conf = new JobConf(new YarnConfiguration());
+        new MRAppMasterShutdownHook(appMaster), SHUTDOWN_HOOK_PRIORITY); // 加上关机挂钩MRAppMasterShutdownHook，使其在关机时得到调用
+      JobConf conf = new JobConf(new YarnConfiguration()); // 重新创建JobConf，配置信息主要来自"yarn-default.xml","yarn-site.xml"等
       conf.addResource(new Path(MRJobConfig.JOB_CONF_FILE));
       
       MRWebAppUtil.initialize(conf);
@@ -1742,7 +1742,7 @@ public class MRAppMaster extends CompositeService {
     LOG.info("Executing with tokens: {}", credentials.getAllTokens());
     
     UserGroupInformation appMasterUgi = UserGroupInformation
-        .createRemoteUser(jobUserName);
+        .createRemoteUser(jobUserName); // 用户权限控制
     appMasterUgi.addCredentials(credentials);
 
     // Now remove the AM->RM token so tasks don't have it

@@ -182,7 +182,7 @@ public class ContainerLaunch implements Callable<Integer> {
   private Map<String, String> expandAllEnvironmentVars(
       ContainerLaunchContext launchContext, Path containerLogDir) {
     Map<String, String> environment = launchContext.getEnvironment();
-    for (Entry<String, String> entry : environment.entrySet()) {
+    for (Entry<String, String> entry : environment.entrySet()) { // 逐一修正环境变量
       String value = entry.getValue();
       value = expandEnvironment(value, containerLogDir);
       entry.setValue(value);
@@ -190,16 +190,20 @@ public class ContainerLaunch implements Callable<Integer> {
     return environment;
   }
 
+  /**
+   * 作为一个Callable，这是受调用执行程序的总入口
+   * @return
+   */
   @Override
   public Integer call() {
     if (!validateContainerState()) {
       return 0;
     }
 
-    final ContainerLaunchContext launchContext = container.getLaunchContext();
+    final ContainerLaunchContext launchContext = container.getLaunchContext(); // 从容器中获取CLC
     ContainerId containerID = container.getContainerId();
     String containerIdStr = containerID.toString();
-    final List<String> command = launchContext.getCommands();
+    final List<String> command = launchContext.getCommands(); // 从CLC中获取命令行
     int ret = -1;
 
     Path containerLogDir;
@@ -209,7 +213,7 @@ public class ContainerLaunch implements Callable<Integer> {
       final String user = container.getUser();
       // /////////////////////////// Variable expansion
       // Before the container script gets written out.
-      List<String> newCmds = new ArrayList<String>(command.size());
+      List<String> newCmds = new ArrayList<String>(command.size()); // 创建新命令行，因为需要根据环境修正命令行中的一些元素
       String appIdStr = app.getAppId().toString();
       String relativeContainerLogDir = ContainerLaunch
           .getRelativeContainerLogDir(appIdStr, containerIdStr);
@@ -218,25 +222,26 @@ public class ContainerLaunch implements Callable<Integer> {
       recordContainerLogDir(containerID, containerLogDir.toString());
       for (String str : command) {
         // TODO: Should we instead work via symlinks without this grammar?
-        newCmds.add(expandEnvironment(str, containerLogDir));
+        // 把老命令行中的元素逐一根据环境需要加以修正后转移到新命令行
+        newCmds.add(expandEnvironment(str, containerLogDir)); // 加入新命令行
       }
-      launchContext.setCommands(newCmds);
+      launchContext.setCommands(newCmds); // 把新命令行写回CLC
 
       Map<String, String> environment = expandAllEnvironmentVars(
-          launchContext, containerLogDir);
+          launchContext, containerLogDir); // 修正环境变量
       // /////////////////////////// End of variable expansion
 
       // Use this to track variables that are added to the environment by nm.
       LinkedHashSet<String> nmEnvVars = new LinkedHashSet<String>();
 
-      FileContext lfs = FileContext.getLocalFSFileContext();
+      FileContext lfs = FileContext.getLocalFSFileContext(); // 决定采用何种文件系统
 
       Path nmPrivateContainerScriptPath = dirsHandler.getLocalPathForWrite(
           getContainerPrivateDir(appIdStr, containerIdStr) + Path.SEPARATOR
-              + CONTAINER_SCRIPT);
+              + CONTAINER_SCRIPT); // 启动脚本路径，如"xyz/launch_container
       Path nmPrivateTokensPath = dirsHandler.getLocalPathForWrite(
           getContainerPrivateDir(appIdStr, containerIdStr) + Path.SEPARATOR
-              + String.format(TOKEN_FILE_NAME_FMT, containerIdStr));
+              + String.format(TOKEN_FILE_NAME_FMT, containerIdStr)); // Token文件路径
       Path nmPrivateKeystorePath = dirsHandler.getLocalPathForWrite(
           getContainerPrivateDir(appIdStr, containerIdStr) + Path.SEPARATOR
               + KEYSTORE_FILE);
@@ -244,23 +249,23 @@ public class ContainerLaunch implements Callable<Integer> {
           getContainerPrivateDir(appIdStr, containerIdStr) + Path.SEPARATOR
               + TRUSTSTORE_FILE);
       Path nmPrivateClasspathJarDir = dirsHandler.getLocalPathForWrite(
-          getContainerPrivateDir(appIdStr, containerIdStr));
+          getContainerPrivateDir(appIdStr, containerIdStr));// JAR文件目录路径
 
       // Select the working directory for the container
       Path containerWorkDir = deriveContainerWorkDir();
-      recordContainerWorkDir(containerID, containerWorkDir.toString());
+      recordContainerWorkDir(containerID, containerWorkDir.toString()); // 工作目录路径
 
       // Select a root dir for all csi volumes for the container
       Path csiVolumesRoot = deriveCsiVolumesRootDir();
       recordContainerCsiVolumesRootDir(containerID, csiVolumesRoot.toString());
 
-      String pidFileSubpath = getPidFileSubpath(appIdStr, containerIdStr);
+      String pidFileSubpath = getPidFileSubpath(appIdStr, containerIdStr); // PID文件子路径
       // pid file should be in nm private dir so that it is not
       // accessible by users
-      pidFilePath = dirsHandler.getLocalPathForWrite(pidFileSubpath);
-      List<String> localDirs = dirsHandler.getLocalDirs();
-      List<String> localDirsForRead = dirsHandler.getLocalDirsForRead();
-      List<String> logDirs = dirsHandler.getLogDirs();
+      pidFilePath = dirsHandler.getLocalPathForWrite(pidFileSubpath); // PID文件全路径
+      List<String> localDirs = dirsHandler.getLocalDirs(); // 本地目录
+      List<String> localDirsForRead = dirsHandler.getLocalDirsForRead(); // 本地目录读取路径
+      List<String> logDirs = dirsHandler.getLogDirs(); // 日志目录
       List<String> filecacheDirs = getNMFilecacheDirs(localDirsForRead);
       List<String> userLocalDirs = getUserLocalDirs(localDirs);
       List<String> containerLocalDirs = getContainerLocalDirs(localDirs);
@@ -269,10 +274,10 @@ public class ContainerLaunch implements Callable<Integer> {
       List<String> applicationLocalDirs = getApplicationLocalDirs(localDirs,
           appIdStr);
 
-      if (!dirsHandler.areDisksHealthy()) {
+      if (!dirsHandler.areDisksHealthy()) { // 检查硬盘是否正常
         ret = ContainerExitStatus.DISKS_FAILED;
         throw new IOException("Most of the disks failed. "
-            + dirsHandler.getDisksHealthReport(false));
+            + dirsHandler.getDisksHealthReport(false)); // 磁盘异常
       }
       List<Path> appDirs = new ArrayList<Path>(localDirs.size());
       for (String localDir : localDirs) {
@@ -327,17 +332,17 @@ public class ContainerLaunch implements Callable<Integer> {
               FINAL_CONTAINER_TOKENS_FILE).toUri().getPath());
 
       // /////////// Write out the container-script in the nmPrivate space.
-      try (DataOutputStream containerScriptOutStream =
+      try (DataOutputStream containerScriptOutStream = // 相当于创建并打开文件，用于写出本容器的启动脚本
                lfs.create(nmPrivateContainerScriptPath,
                    EnumSet.of(CREATE, OVERWRITE))) {
-        // Sanitize the container's environment
+        // Sanitize the container's environment，设置一些列的环境变量
         sanitizeEnv(environment, containerWorkDir, appDirs, userLocalDirs,
             containerLogDirs, localResources, nmPrivateClasspathJarDir,
             nmEnvVars);
 
         prepareContainer(localResources, containerLocalDirs);
 
-        // Write out the environment
+        // Write out the environment 把环境变量的设置，以及launchContext中带来的命令行写入脚本
         exec.writeLaunchEnv(containerScriptOutStream, environment,
             localResources, launchContext.getCommands(),
             containerLogDir, user, nmEnvVars);
@@ -348,7 +353,7 @@ public class ContainerLaunch implements Callable<Integer> {
       try (DataOutputStream tokensOutStream =
                lfs.create(nmPrivateTokensPath, EnumSet.of(CREATE, OVERWRITE))) {
         Credentials creds = container.getCredentials();
-        creds.writeTokenStorageToStream(tokensOutStream);
+        creds.writeTokenStorageToStream(tokensOutStream); // 有关安全机制
       }
       // /////////// End of writing out container-tokens
 
@@ -386,10 +391,10 @@ public class ContainerLaunch implements Callable<Integer> {
           e.getMessage()));
       return ret;
     } finally {
-      setContainerCompletedStatus(ret);
+      setContainerCompletedStatus(ret); // 运行成功
     }
 
-    handleContainerExitCode(ret, containerLogDir);
+    handleContainerExitCode(ret, containerLogDir); // 通知容器退出事件
     return ret;
   }
 
@@ -550,7 +555,7 @@ public class ContainerLaunch implements Callable<Integer> {
   protected Map<Path, List<String>> getLocalizedResources()
       throws YarnException {
     Map<Path, List<String>> localResources = container.getLocalizedResources();
-    if (localResources == null) {
+    if (localResources == null) { // 资源本地化尚未成功
       throw RPCUtil.getRemoteException(
           "Unable to get local resources when Container " + container
               + " is at " + container.getContainerState());
@@ -560,7 +565,7 @@ public class ContainerLaunch implements Callable<Integer> {
 
   protected int launchContainer(ContainerStartContext ctx)
       throws IOException, ConfigurationException {
-    int launchPrep = prepareForLaunch(ctx);
+    int launchPrep = prepareForLaunch(ctx); // 向ContainerImpl发送事件
     if (launchPrep == 0) {
       launchLock.lock();
       try {
@@ -615,18 +620,19 @@ public class ContainerLaunch implements Callable<Integer> {
     }
     // LaunchContainer is a blocking call. We are here almost means the
     // container is launched, so send out the event.
+    // 使ContainerImpl对象的状态机执行LaunchTransition.transition(),并进入RUNNING状态
     dispatcher.getEventHandler().handle(new ContainerEvent(
         containerId,
         ContainerEventType.CONTAINER_LAUNCHED));
     context.getNMStateStore().storeContainerLaunched(containerId);
 
-    // Check if the container is signalled to be killed.
+    // Check if the container is signalled to be killed. 万一容器已被kill
     if (!containerAlreadyLaunched.compareAndSet(false, true)) {
       LOG.info("Container " + containerId + " not launched as "
           + "cleanup already called");
       return ExitCode.TERMINATED.getExitCode();
-    } else {
-      exec.activateContainer(containerId, pidFilePath);
+    } else { // 正常情况，发起容器运行
+      exec.activateContainer(containerId, pidFilePath); // 运行发起Container运行
     }
     return ExitCode.SUCCESS.getExitCode();
   }
@@ -667,6 +673,8 @@ public class ContainerLaunch implements Callable<Integer> {
           diagnosticInfo);
     } else {
       LOG.info("Container " + containerId + " succeeded ");
+      // 使ContainerImpl对象的状态机执行ExitedWithSuccessTransition.transition(),
+      // 并进入CONTAINER_EXITED_WITH_SUCCESS状态
       dispatcher.getEventHandler().handle(
           new ContainerEvent(containerId,
               ContainerEventType.CONTAINER_EXITED_WITH_SUCCESS));

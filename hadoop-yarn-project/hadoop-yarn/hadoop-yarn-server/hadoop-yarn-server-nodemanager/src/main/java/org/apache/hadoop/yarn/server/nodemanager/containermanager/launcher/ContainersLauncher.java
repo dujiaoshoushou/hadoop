@@ -132,8 +132,8 @@ public class ContainersLauncher extends AbstractService
         ContainerLaunch launch =
             new ContainerLaunch(context, getConfig(), dispatcher, exec, app,
               event.getContainer(), dirsHandler, containerManager);
-        containerLauncher.submit(launch);
-        running.put(containerId, launch);
+        containerLauncher.submit(launch); // 将callable对象ContainerLaunch提交给ExecutorService
+        running.put(containerId, launch); // 并将其记录在running集合中
         break;
       case RELAUNCH_CONTAINER:
         app = context.getApplications().get(

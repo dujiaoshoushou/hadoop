@@ -153,35 +153,35 @@ public class DefaultContainerExecutor extends ContainerExecutor {
     String locId = ctx.getLocId();
     LocalDirsHandlerService dirsHandler = ctx.getDirsHandler();
 
-    List<String> localDirs = dirsHandler.getLocalDirs();
-    List<String> logDirs = dirsHandler.getLogDirs();
+    List<String> localDirs = dirsHandler.getLocalDirs(); // 目标目录路径的集合
+    List<String> logDirs = dirsHandler.getLogDirs(); // 用于Log的目录路径集合
     
-    createUserLocalDirs(localDirs, user);
-    createUserCacheDirs(localDirs, user);
-    createAppDirs(localDirs, user, appId);
-    createAppLogDirs(appId, logDirs, user);
+    createUserLocalDirs(localDirs, user); // 在本地创建用户的目标文件目录
+    createUserCacheDirs(localDirs, user); // 创建该用户的缓存目录
+    createAppDirs(localDirs, user, appId); // 创建针对具体AppId的文件目录
+    createAppLogDirs(appId, logDirs, user); // 创建该App的日志文件目录
 
-    // randomly choose the local directory
+    // randomly choose the local directory 创建一个临时的工作目录
     Path appStorageDir = getWorkingDir(localDirs, user, appId);
-
+    // 处理与身份证Token有关的文件
     String tokenFn = String.format(TOKEN_FILE_NAME_FMT, locId);
     Path tokenDst = new Path(appStorageDir, tokenFn);
     copyFile(nmPrivateContainerTokensPath, tokenDst, user);
     LOG.info("Copying from {} to {}", nmPrivateContainerTokensPath, tokenDst);
 
-
+    // 进行本地化
     FileContext localizerFc =
         FileContext.getFileContext(lfs.getDefaultFileSystem(), getConf());
     localizerFc.setUMask(lfs.getUMask());
-    localizerFc.setWorkingDirectory(appStorageDir);
+    localizerFc.setWorkingDirectory(appStorageDir); // 转入临时工作目录
     LOG.info("Localizer CWD set to {} = {}", appStorageDir,
         localizerFc.getWorkingDirectory());
 
     ContainerLocalizer localizer =
         createContainerLocalizer(user, appId, locId, tokenFn, localDirs,
-            localizerFc);
+            localizerFc); // 创建一个ContainerLocalizer类对象
     // TODO: DO it over RPC for maintaining similarity?
-    localizer.runLocalization(nmAddr);
+    localizer.runLocalization(nmAddr); // 调用ContainerLocalizer.runLocalization()
   }
 
   /**

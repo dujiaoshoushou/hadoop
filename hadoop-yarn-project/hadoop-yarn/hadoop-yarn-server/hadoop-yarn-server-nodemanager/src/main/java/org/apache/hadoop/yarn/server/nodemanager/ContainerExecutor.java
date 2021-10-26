@@ -405,7 +405,7 @@ public abstract class ContainerExecutor implements Configurable {
       throws IOException {
 
     ContainerLaunch.ShellScriptBuilder sb =
-        ContainerLaunch.ShellScriptBuilder.create();
+        ContainerLaunch.ShellScriptBuilder.create(); // 通过操作系统判断用哪种shell命令
 
     // Add "set -o pipefail -e" to validate launch_container script.
     sb.setExitOnFailure();
@@ -427,7 +427,7 @@ public abstract class ContainerExecutor implements Configurable {
         if (!environment.containsKey(var)) {
           String val = getNMEnvVar(var);
           if (val != null) {
-            sb.whitelistedEnv(var, val);
+            sb.whitelistedEnv(var, val); // 为环境变量添加export命令（unix系统）
           }
         }
       }
@@ -463,12 +463,12 @@ public abstract class ContainerExecutor implements Configurable {
       sb.listDebugInformation(new Path(logDir, DIRECTORY_CONTENTS));
     }
     sb.echo("Launching container");
-    sb.command(command);
+    sb.command(command); // == UnixShellScriptBuilder.command()
 
     PrintStream pout = null;
     try {
-      pout = new PrintStream(out, false, "UTF-8");
-      sb.write(pout);
+      pout = new PrintStream(out, false, "UTF-8"); // 在输出流out的基础上构建一个PrintStream
+      sb.write(pout); // == UnixShellScriptBuilder.write(),将UnixShellScriptBuilder中生成的各行语句写到脚本文件中去
     } finally {
       if (out != null) {
         out.close();
