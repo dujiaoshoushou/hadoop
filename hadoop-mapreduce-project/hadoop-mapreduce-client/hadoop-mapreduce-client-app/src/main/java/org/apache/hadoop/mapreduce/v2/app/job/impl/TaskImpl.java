@@ -911,7 +911,7 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
   // Used when creating a new attempt while one is already running.
   //  Currently we do this for speculation.  In the future we may do this
   //  for tasks that failed in a way that might indicate application code
-  //  problems, so we can take later failures in parallel and flush the
+  //  problems, so we can take later failures in pmit -arallel and flush the
   //  job quickly when this happens.
   private static class RedundantScheduleTransition
     implements SingleArcTransition<TaskImpl, TaskEvent> {
