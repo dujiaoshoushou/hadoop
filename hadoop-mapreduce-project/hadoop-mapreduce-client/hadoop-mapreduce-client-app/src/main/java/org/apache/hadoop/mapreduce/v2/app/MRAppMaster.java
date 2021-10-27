@@ -283,7 +283,7 @@ public class MRAppMaster extends CompositeService {
 
     initJobCredentialsAndUGI(conf);
 
-    dispatcher = createDispatcher();
+    dispatcher = createDispatcher(); // 事件分发器，类似于事件信息的路由器
     addIfService(dispatcher);
     taskAttemptFinishingMonitor = createTaskAttemptFinishingMonitor(dispatcher.getEventHandler());
     addIfService(taskAttemptFinishingMonitor);
@@ -298,7 +298,7 @@ public class MRAppMaster extends CompositeService {
     newApiCommitter = false;
     jobId = MRBuilderUtils.newJobId(appAttemptID.getApplicationId(),
         appAttemptID.getApplicationId().getId());
-    int numReduceTasks = conf.getInt(MRJobConfig.NUM_REDUCES, 0);
+    int numReduceTasks = conf.getInt(MRJobConfig.NUM_REDUCES, 0); // 获取Reducer的数量
     if ((numReduceTasks > 0 && 
         conf.getBoolean("mapred.reducer.new-api", false)) ||
           (numReduceTasks == 0 && 
@@ -419,7 +419,7 @@ public class MRAppMaster extends CompositeService {
       // Init ClientService separately so that we stop it separately, since this
       // service needs to wait some time before it stops so clients can know the
       // final states
-      clientService.init(conf);
+      clientService.init(conf); // 并调用其init()
       
       containerAllocator = createContainerAllocator(clientService, context);
       
@@ -449,7 +449,7 @@ public class MRAppMaster extends CompositeService {
       this.jobEventDispatcher = new JobEventDispatcher();
 
       //register the event dispatchers
-      dispatcher.register(JobEventType.class, jobEventDispatcher);
+      dispatcher.register(JobEventType.class, jobEventDispatcher); // 向dispatcher登记由jobEventDispatcher结收，类型为JobEventType的事件
       dispatcher.register(TaskEventType.class, new TaskEventDispatcher());
       dispatcher.register(TaskAttemptEventType.class, 
           new TaskAttemptEventDispatcher());
@@ -495,7 +495,7 @@ public class MRAppMaster extends CompositeService {
   } // end of init()
   
   protected Dispatcher createDispatcher() {
-    return new AsyncDispatcher();
+    return new AsyncDispatcher(); // MRAppMaster的Dispatcher是AsyncDispatcher
   }
 
   private boolean isCommitJobRepeatable() throws IOException {
@@ -531,7 +531,7 @@ public class MRAppMaster extends CompositeService {
   }
 
   private OutputCommitter createOutputCommitter(Configuration conf) {
-    return callWithJobClassLoader(conf, new Action<OutputCommitter>() {
+    return callWithJobClassLoader(conf, new Action<OutputCommitter>() { // 创建一个实现了Action界面的对象，动态定义其call()函数
       public OutputCommitter call(Configuration conf) {
         OutputCommitter committer = null;
 
@@ -874,7 +874,7 @@ public class MRAppMaster extends CompositeService {
 
   protected ContainerAllocator createContainerAllocator(
       final ClientService clientService, final AppContext context) {
-    return new ContainerAllocatorRouter(clientService, context);
+    return new ContainerAllocatorRouter(clientService, context); // 创建ContainerAllocatorRouter
   }
 
   protected RMHeartbeatHandler getRMHeartbeatHandler() {
@@ -888,7 +888,7 @@ public class MRAppMaster extends CompositeService {
 
   //TODO:should have an interface for MRClientService
   protected ClientService createClientService(AppContext context) {
-    return new MRClientService(context);
+    return new MRClientService(context); // 创建MRClientService
   }
 
   public ApplicationId getAppID() {
@@ -1260,7 +1260,7 @@ public class MRAppMaster extends CompositeService {
       // Send init to the job (this does NOT trigger job execution)
       // This is a synchronous call, not an event through dispatcher. We want
       // job-init to be done completely here.
-      jobEventDispatcher.handle(initJobEvent);
+      jobEventDispatcher.handle(initJobEvent); // 向JobImpl发送JOB_INIT事件，使其状态机进入INITED状态
 
       // If job is still not initialized, an error happened during
       // initialization. Must complete starting all of the services so failure
@@ -1287,7 +1287,7 @@ public class MRAppMaster extends CompositeService {
       }
       // Start ClientService here, since it's not initialized if
       // errorHappenedShutDown is true
-      clientService.start();
+      clientService.start(); // == MRClientService.start()
     }
     //start all the components
     super.serviceStart();
@@ -1757,8 +1757,8 @@ public class MRAppMaster extends CompositeService {
     appMasterUgi.doAs(new PrivilegedExceptionAction<Object>() {
       @Override
       public Object run() throws Exception {
-        appMaster.init(conf);
-        appMaster.start();
+        appMaster.init(conf); // serviceInit(final Configuration conf) 先执行serviceInit()
+        appMaster.start(); // serviceStart(),再执行serviceStart()
         if(appMaster.errorHappenedShutDown) {
           throw new IOException("Was asked to shut down.");
         }
@@ -1799,7 +1799,7 @@ public class MRAppMaster extends CompositeService {
       MRApps.setClassLoader(jobClassLoader, conf);
     }
     try {
-      return action.call(conf);
+      return action.call(conf); // 调用上面的那个call函数
     } finally {
       if (setJobClassLoader) {
         // restore the original classloader

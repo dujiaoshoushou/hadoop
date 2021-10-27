@@ -612,33 +612,33 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
     TaskAttempt attempt = addAttempt(avataar);
     inProgressAttempts.add(attempt.getID());
     //schedule the nextAttemptNumber
-    if (failedAttempts.size() > 0 || reschedule) {
+    if (failedAttempts.size() > 0 || reschedule) { // 曾有失败的attempt，需要调度重试
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
           TaskAttemptEventType.TA_RESCHEDULE));
-    } else {
+    } else { // 无失败记录，直接调度
       eventHandler.handle(new TaskAttemptEvent(attempt.getID(),
-          TaskAttemptEventType.TA_SCHEDULE));
+          TaskAttemptEventType.TA_SCHEDULE)); // 向TaskAttempt发送TA_SCHEDULE事件
     }
   }
 
   private TaskAttemptImpl addAttempt(Avataar avataar) {
-    TaskAttemptImpl attempt = createAttempt();
+    TaskAttemptImpl attempt = createAttempt(); // 创建具体的TaskAttemptImpl
     attempt.setAvataar(avataar);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Created attempt " + attempt.getID());
     }
     switch (attempts.size()) {
-      case 0:
+      case 0: // 本任务尚未创建attempts，这个attempt是第一个，先为其创建一个临时MAP
         attempts = Collections.singletonMap(attempt.getID(),
             (TaskAttempt) attempt);
         break;
         
-      case 1:
+      case 1: // 刚创建的这个attempt是第二个，创建一个正式的Map来取代临时Map
         Map<TaskAttemptId, TaskAttempt> newAttempts
             = new LinkedHashMap<TaskAttemptId, TaskAttempt>(maxAttempts);
-        newAttempts.putAll(attempts);
-        attempts = newAttempts;
-        attempts.put(attempt.getID(), attempt);
+        newAttempts.putAll(attempts); // 从原先的临时Map转移过了
+        attempts = newAttempts; // 取代
+        attempts.put(attempt.getID(), attempt); // 将刚创建的attempt也加进去
         break;
 
       default:
@@ -902,9 +902,9 @@ public abstract class TaskImpl implements Task, EventHandler<TaskEvent> {
 
     @Override
     public void transition(TaskImpl task, TaskEvent event) {
-      task.addAndScheduleAttempt(Avataar.VIRGIN);
+      task.addAndScheduleAttempt(Avataar.VIRGIN); // 增加一个初次尝试，并加以调度，VIRGIN表示原初，SPECULATIVE表示替补
       task.scheduledTime = task.clock.getTime();
-      task.sendTaskStartedEvent();
+      task.sendTaskStartedEvent(); // 为历史记录发送任务启动事件
     }
   }
 

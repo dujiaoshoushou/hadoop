@@ -985,10 +985,10 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
       boolean recoverTaskOutput) {
     for (TaskId taskID : taskIDs) {
       TaskInfo taskInfo = completedTasksFromPreviousRun.remove(taskID);
-      if (taskInfo != null) {
+      if (taskInfo != null) { // 原先就有，是要恢复运行的老任务
         eventHandler.handle(new TaskRecoverEvent(taskID, taskInfo,
             committer, recoverTaskOutput));
-      } else {
+      } else { // 原先没有，这是要调度运行的新任务
         eventHandler.handle(new TaskEvent(taskID, TaskEventType.T_SCHEDULE));
       }
     }
@@ -1443,10 +1443,10 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
       job.metrics.submittedJob(job);
       job.metrics.preparingJob(job);
 
-      if (job.newApiCommitter) {
+      if (job.newApiCommitter) { // 如果采用行API
         job.jobContext = new JobContextImpl(job.conf,
             job.oldJobId);
-      } else {
+      } else { // 如果采用老API
         job.jobContext = new org.apache.hadoop.mapred.JobContextImpl(
             job.conf, job.oldJobId);
       }
@@ -1470,9 +1470,9 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
         job.eventHandler.handle(new JobHistoryEvent(job.jobId, jse));
         //TODO JH Verify jobACLs, UserName via UGI?
 
-        TaskSplitMetaInfo[] taskSplitMetaInfo = createSplits(job, job.jobId);
-        job.numMapTasks = taskSplitMetaInfo.length;
-        job.numReduceTasks = job.conf.getInt(MRJobConfig.NUM_REDUCES, 0);
+        TaskSplitMetaInfo[] taskSplitMetaInfo = createSplits(job, job.jobId); // 获取分片信息
+        job.numMapTasks = taskSplitMetaInfo.length; // MapTask的数量取决于输入文件分片
+        job.numReduceTasks = job.conf.getInt(MRJobConfig.NUM_REDUCES, 0); // ReduceTask的数量根据设置，默认为0
 
         if (job.numMapTasks == 0 && job.numReduceTasks == 0) {
           job.addDiagnostic("No of maps and reduces are 0 " + job.jobId);
@@ -1488,10 +1488,10 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
 
         long inputLength = 0;
         for (int i = 0; i < job.numMapTasks; ++i) {
-          inputLength += taskSplitMetaInfo[i].getInputDataLength();
+          inputLength += taskSplitMetaInfo[i].getInputDataLength(); // 统计输入数据总长度
         }
 
-        job.makeUberDecision(inputLength);
+        job.makeUberDecision(inputLength); // 根据输入数据总长度决定是否采用Uber模式
         
         job.taskAttemptCompletionEvents =
             new ArrayList<TaskAttemptCompletionEvent>(
@@ -1610,7 +1610,7 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
       } catch (IOException e) {
         throw new YarnRuntimeException(e);
       }
-      return allTaskSplitMetaInfo;
+      return allTaskSplitMetaInfo; // 输入文件分片信息来自JobImpl的数据结构部分
     }
 
     /**
@@ -1688,7 +1688,7 @@ public class JobImpl implements org.apache.hadoop.mapreduce.v2.app.job.Job,
       job.metrics.runningJob(job);
 
       job.eventHandler.handle(new CommitterJobSetupEvent(
-              job.jobId, job.jobContext));
+              job.jobId, job.jobContext)); // 由CommitterEventHandler.handle()加以处理
     }
   }
 
