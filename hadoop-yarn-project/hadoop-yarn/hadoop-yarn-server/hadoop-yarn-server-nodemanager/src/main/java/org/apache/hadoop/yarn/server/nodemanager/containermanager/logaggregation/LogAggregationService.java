@@ -229,7 +229,7 @@ public class LogAggregationService extends AbstractService implements
       eventResponse = new ApplicationEvent(appId,
           ApplicationEventType.APPLICATION_LOG_HANDLING_FAILED);
     }
-    this.dispatcher.getEventHandler().handle(eventResponse);
+    this.dispatcher.getEventHandler().handle(eventResponse); // 将事件发送给ApplicationImpl
   }
   
   FileContext getLocalFileContext(Configuration conf) {
@@ -367,7 +367,7 @@ public class LogAggregationService extends AbstractService implements
             appStartEvent.getCredentials(),
             appStartEvent.getApplicationAcls(),
             appStartEvent.getLogAggregationContext(),
-            appStartEvent.getRecoveredAppLogInitedTime());
+            appStartEvent.getRecoveredAppLogInitedTime()); // 这只是日志服务中针对具体App的初始化
         break;
       case CONTAINER_FINISHED:
         LogHandlerContainerFinishedEvent containerFinishEvent =

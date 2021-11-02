@@ -219,11 +219,11 @@ final class DefaultAMSProcessor implements ApplicationMasterServiceProcessor {
 
     handleProgress(appAttemptId, request);
 
-    List<ResourceRequest> ask = request.getAskList();
-    List<ContainerId> release = request.getReleaseList();
+    List<ResourceRequest> ask = request.getAskList(); // 要求分配的资源列表
+    List<ContainerId> release = request.getReleaseList(); // 可以分配的资源列表
 
     ResourceBlacklistRequest blacklistRequest =
-        request.getResourceBlacklistRequest();
+        request.getResourceBlacklistRequest(); // 对于黑名单的变更
     List<String> blacklistAdditions =
         (blacklistRequest != null) ?
             blacklistRequest.getBlacklistAdditions() : Collections.emptyList();
@@ -299,6 +299,9 @@ final class DefaultAMSProcessor implements ApplicationMasterServiceProcessor {
       allocation = EMPTY_ALLOCATION;
     } else {
       try {
+        /*
+         * 分配资源，ResourceSchedulerWrapper.allocate()
+         */
         allocation = getScheduler().allocate(appAttemptId, ask,
             request.getSchedulingRequests(), release,
             blacklistAdditions, blacklistRemovals, containerUpdateRequests);
@@ -417,6 +420,9 @@ final class DefaultAMSProcessor implements ApplicationMasterServiceProcessor {
     }
 
     // Send the status update to the appAttempt.
+    /*
+    * 对于具体RMAppAttempt的状态更新
+    */
     getRmContext().getDispatcher().getEventHandler().handle(
         new RMAppAttemptStatusupdateEvent(appAttemptId, request
             .getProgress(), request.getTrackingUrl()));

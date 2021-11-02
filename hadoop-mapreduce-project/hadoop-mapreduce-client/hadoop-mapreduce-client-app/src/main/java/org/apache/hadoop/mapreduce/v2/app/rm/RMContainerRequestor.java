@@ -203,10 +203,14 @@ public abstract class RMContainerRequestor extends RMCommunicator {
     AllocateRequest allocateRequest =
         AllocateRequest.newInstance(lastResponseID,
           super.getApplicationProgress(), new ArrayList<ResourceRequest>(ask),
-          new ArrayList<ContainerId>(release), blacklistRequest);
+          new ArrayList<ContainerId>(release), blacklistRequest); // 构筑请求报文
+    /*
+     *  这个scheduler就是向RM节点进行有关资源调度的RPC中介
+     *  ApplicationMasterProtocolPBClientImpl.allocate(allocateRequest);
+     */
     AllocateResponse allocateResponse = scheduler.allocate(allocateRequest);
     lastResponseID = allocateResponse.getResponseId();
-    availableResources = allocateResponse.getAvailableResources();
+    availableResources = allocateResponse.getAvailableResources(); // RM的回应中有资源清单
     lastClusterNmCount = clusterNmCount;
     clusterNmCount = allocateResponse.getNumClusterNodes();
     int numCompletedContainers =

@@ -59,6 +59,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Allocates containers locally. Doesn't allocate a real container;
  * instead sends an allocated event for all requests.
+ * 在本地分配容器。不分配真正的容器；
+ * 而是为所有请求发送一个分配的事件。
  */
 public class LocalContainerAllocator extends RMCommunicator
     implements ContainerAllocator {
@@ -92,7 +94,7 @@ public class LocalContainerAllocator extends RMCommunicator
 
   @Override
   protected void serviceInit(Configuration conf) throws Exception {
-    super.serviceInit(conf);
+    super.serviceInit(conf); // == RMCommunicator.serviceInit(conf)
     retryInterval =
         getConfig().getLong(MRJobConfig.MR_AM_TO_RM_WAIT_INTERVAL_MS,
             MRJobConfig.DEFAULT_MR_AM_TO_RM_WAIT_INTERVAL_MS);
@@ -106,11 +108,13 @@ public class LocalContainerAllocator extends RMCommunicator
   protected synchronized void heartbeat() throws Exception {
     AllocateRequest allocateRequest =
         AllocateRequest.newInstance(this.lastResponseID,
-          super.getApplicationProgress(), new ArrayList<ResourceRequest>(),
-        new ArrayList<ContainerId>(), null);
+          super.getApplicationProgress(),
+                new ArrayList<ResourceRequest>(), // 本应是ask，现在为空List
+        new ArrayList<ContainerId>(),  // 本应是release，现也为空List
+                null); // 本应为BlackList，所以实际上并未向RM申请容器
     AllocateResponse allocateResponse = null;
     try {
-      allocateResponse = scheduler.allocate(allocateRequest);
+      allocateResponse = scheduler.allocate(allocateRequest); // 这是RMCommunicator.scheduler,一个RMProxy
       // Reset retry count if no exception occurred.
       retrystartTime = System.currentTimeMillis();
     } catch (ApplicationAttemptNotFoundException e) {
@@ -172,28 +176,32 @@ public class LocalContainerAllocator extends RMCommunicator
     if (event.getType() == ContainerAllocator.EventType.CONTAINER_REQ) {
       LOG.info("Processing the event " + event.toString());
       // Assign the same container ID as the AM
+      /*
+       * 生成一个新的ContainerId，this就是MRAppMaster对象本身
+       * this.containerId就是用来运行MRAppMaster的那个容器的ID
+       */
       ContainerId cID =
           ContainerId.newContainerId(getContext().getApplicationAttemptId(),
             this.containerId.getContainerId());
-      Container container = recordFactory.newRecordInstance(Container.class);
-      container.setId(cID);
-      NodeId nodeId = NodeId.newInstance(this.nmHost, this.nmPort);
+      Container container = recordFactory.newRecordInstance(Container.class); // 创建一个容器
+      container.setId(cID); // 设置容器ID
+      NodeId nodeId = NodeId.newInstance(this.nmHost, this.nmPort); // 生成本节点的NodeId
       container.setResource(Resource.newInstance(0, 0));
-      container.setNodeId(nodeId);
-      container.setContainerToken(null);
-      container.setNodeHttpAddress(this.nmHost + ":" + this.nmHttpPort);
+      container.setNodeId(nodeId); // 设置该容器的地点为本节点
+      container.setContainerToken(null); // 没有Token
+      container.setNodeHttpAddress(this.nmHost + ":" + this.nmHttpPort); // 本节点的Web地址
       // send the container-assigned event to task attempt
 
-      if (event.getAttemptID().getTaskId().getTaskType() == TaskType.MAP) {
+      if (event.getAttemptID().getTaskId().getTaskType() == TaskType.MAP) { // 对于MAP任务
         JobCounterUpdateEvent jce =
             new JobCounterUpdateEvent(event.getAttemptID().getTaskId()
                 .getJobId());
         // TODO Setting OTHER_LOCAL_MAP for now.
         jce.addCounterUpdate(JobCounter.OTHER_LOCAL_MAPS, 1);
-        eventHandler.handle(jce);
+        eventHandler.handle(jce); // 向JobImpl发送JOB_COUNTER_UPDATE事件
       }
       eventHandler.handle(new TaskAttemptContainerAssignedEvent(
-          event.getAttemptID(), container, applicationACLs));
+          event.getAttemptID(), container, applicationACLs)); // 发送TA_ASSIGNED事件，这个container并非真的来自RM
     }
   }
 

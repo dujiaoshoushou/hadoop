@@ -1108,7 +1108,7 @@ public abstract class TaskAttemptImpl implements
     synchronized (commonContainerSpecLock) {
       if (commonContainerSpec == null) {
         commonContainerSpec = createCommonContainerLaunchContext(
-            applicationACLs, conf, jobToken, oldJobId, credentials);
+            applicationACLs, conf, jobToken, oldJobId, credentials); // CLC的公共部分
       }
     }
 
@@ -1128,6 +1128,7 @@ public abstract class TaskAttemptImpl implements
     MapReduceChildJVM.setVMEnv(myEnv, remoteTask);
 
     // Set up the launch command
+    // 从MapReduceChildJVM获取用来启动JVM的命令行，这里是重点，决定了将要启动的必定是个用来实现MapReduce计算的java类。
     List<String> commands = MapReduceChildJVM.getVMCommand(
         taskAttemptListener.getAddress(), remoteTask, jvmID);
 
@@ -1144,7 +1145,7 @@ public abstract class TaskAttemptImpl implements
         myServiceData, commonContainerSpec.getTokens().duplicate(),
         applicationACLs);
 
-    return container;
+    return container; // 注意这个"container"是个ContainerLaunchContext
   }
 
   @Override
@@ -1811,15 +1812,16 @@ public abstract class TaskAttemptImpl implements
     public void transition(TaskAttemptImpl taskAttempt, 
         TaskAttemptEvent event) {
       // Tell any speculator that we're requesting a container
+      // 由SpeculatorEventDispatcher交由DefaultSpeculator处理
       taskAttempt.eventHandler.handle
           (new SpeculatorEvent(taskAttempt.getID().getTaskId(), +1));
       //request for container
-      if (rescheduled) {
+      if (rescheduled) { // 尝试失败后另行申请分配容器
         taskAttempt.eventHandler.handle(
             ContainerRequestEvent.createContainerRequestEventForFailedContainer(
                 taskAttempt.attemptId, 
                 taskAttempt.resourceCapability));
-      } else {
+      } else { // 这是常规任务尝试的容器申请
         taskAttempt.eventHandler.handle(new ContainerRequestEvent(
             taskAttempt.attemptId, taskAttempt.resourceCapability,
             taskAttempt.dataLocalHosts.toArray(
@@ -1873,18 +1875,19 @@ public abstract class TaskAttemptImpl implements
         TaskAttemptEvent event) {
       final TaskAttemptContainerAssignedEvent cEvent = 
         (TaskAttemptContainerAssignedEvent) event;
-      Container container = cEvent.getContainer();
-      taskAttempt.container = container;
-      // this is a _real_ Task (classic Hadoop mapred flavor):
+      Container container = cEvent.getContainer(); // 从事件对象中抽取容器
+      taskAttempt.container = container; // 这就是指定给这个taskAttempt的容器
+      // this is a _real_ Task (classic Hadoop mapred flavor):，假定其为MapTask
       taskAttempt.remoteTask = taskAttempt.createRemoteTask();
+
       taskAttempt.jvmID =
-          new WrappedJvmID(taskAttempt.remoteTask.getTaskID().getJobID(),
-              taskAttempt.remoteTask.isMapTask(),
-              taskAttempt.container.getId().getContainerId());
+          new WrappedJvmID(taskAttempt.remoteTask.getTaskID().getJobID(), // 所属Job的ID
+              taskAttempt.remoteTask.isMapTask(), // 是否MapTask
+              taskAttempt.container.getId().getContainerId()); // 容器的ID
       taskAttempt.taskAttemptListener.registerPendingTask(
           taskAttempt.remoteTask, taskAttempt.jvmID);
 
-      taskAttempt.computeRackAndLocality();
+      taskAttempt.computeRackAndLocality(); // 计算taskAttempt的地域
       
       //launch the container
       //create the container object to be launched for a given Task attempt
@@ -1981,7 +1984,7 @@ public abstract class TaskAttemptImpl implements
         (TaskAttemptContainerLaunchedEvent) evnt;
 
       //set the launch time
-      taskAttempt.launchTime = taskAttempt.clock.getTime();
+      taskAttempt.launchTime = taskAttempt.clock.getTime(); // 启动时间
       taskAttempt.shufflePort = event.getShufflePort();
 
       // register it to TaskAttemptListener so that it can start monitoring it.
@@ -1993,10 +1996,10 @@ public abstract class TaskAttemptImpl implements
           NetUtils.createSocketAddr(taskAttempt.container.getNodeHttpAddress());
       taskAttempt.trackerName = nodeHttpInetAddr.getHostName();
       taskAttempt.httpPort = nodeHttpInetAddr.getPort();
-      taskAttempt.sendLaunchedEvents();
+      taskAttempt.sendLaunchedEvents(); // 向MRAppMaster中的JobImpl发送事件
       taskAttempt.eventHandler.handle
           (new SpeculatorEvent
-              (taskAttempt.attemptId, true, taskAttempt.clock.getTime()));
+              (taskAttempt.attemptId, true, taskAttempt.clock.getTime())); // 向Speculator发送事件
       //make remoteTask reference as null as it is no more needed
       //and free up the memory
       taskAttempt.remoteTask = null;
@@ -2004,7 +2007,7 @@ public abstract class TaskAttemptImpl implements
       //tell the Task that attempt has started
       taskAttempt.eventHandler.handle(new TaskTAttemptEvent(
           taskAttempt.attemptId, 
-         TaskEventType.T_ATTEMPT_LAUNCHED));
+         TaskEventType.T_ATTEMPT_LAUNCHED)); // 想TaskImpl发送事件，用于统计目的
     }
   }
    

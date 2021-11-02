@@ -85,10 +85,10 @@ class YarnChild {
     // MAPREDUCE-6565: need to set configuration for SecurityUtil.
     SecurityUtil.setConfiguration(job);
 
-    String host = args[0];
-    int port = Integer.parseInt(args[1]);
+    String host = args[0]; // 命令行中带入MRAppmaster所在的主机名和IP地址
+    int port = Integer.parseInt(args[1]); // 命令行中带入MRAppMaster的端口号
     final InetSocketAddress address =
-        NetUtils.createSocketAddrForHost(host, port);
+        NetUtils.createSocketAddrForHost(host, port); // Socket的ip地址和端口号
     final TaskAttemptID firstTaskid = TaskAttemptID.forName(args[2]);
     long jvmIdLong = Long.parseLong(args[3]);
     JVMId jvmId = new JVMId(firstTaskid.getJobID(),
@@ -112,18 +112,21 @@ class YarnChild {
     Token<JobTokenIdentifier> jt = TokenCache.getJobToken(credentials);
     SecurityUtil.setTokenService(jt, address);
     taskOwner.addToken(jt);
+    /**
+     * 与MRAppMaster的关系就像婴孩与母亲的关系，中间要有条脐带umbilical
+     */
     final TaskUmbilicalProtocol umbilical =
       taskOwner.doAs(new PrivilegedExceptionAction<TaskUmbilicalProtocol>() {
       @Override
       public TaskUmbilicalProtocol run() throws Exception {
         return (TaskUmbilicalProtocol)RPC.getProxy(TaskUmbilicalProtocol.class,
-            TaskUmbilicalProtocol.versionID, address, job);
+            TaskUmbilicalProtocol.versionID, address, job); // 这个脐带其实就是一个proxy
       }
     });
 
     // report non-pid to application master
     JvmContext context = new JvmContext(jvmId, "-1000");
-    LOG.debug("PID: " + System.getenv().get("JVM_PID"));
+    LOG.debug("PID: " + System.getenv().get("JVM_PID")); // 获取JVM的进程号pid
     Task task = null;
     UserGroupInformation childUGI = null;
     ScheduledExecutorService logSyncer = null;
@@ -137,13 +140,13 @@ class YarnChild {
         LOG.info("Sleeping for " + sleepTimeMilliSecs
             + "ms before retrying again. Got null now.");
         MILLISECONDS.sleep(sleepTimeMilliSecs);
-        myTask = umbilical.getTask(context);
+        myTask = umbilical.getTask(context); // 从MRAppMaster认领任务，这是个JvmTask
       }
       if (myTask.shouldDie()) {
         return;
       }
 
-      task = myTask.getTask();
+      task = myTask.getTask(); // 从JvmTask中还原出Task，是MapTask或ReduceTask
       YarnChild.taskid = task.getTaskID();
 
       // Create the job-conf and set credentials
@@ -174,8 +177,8 @@ class YarnChild {
         public Object run() throws Exception {
           // use job-specified working directory
           setEncryptedSpillKeyIfRequired(taskFinal);
-          FileSystem.get(job).setWorkingDirectory(job.getWorkingDirectory());
-          taskFinal.run(job, umbilical); // run the task
+          FileSystem.get(job).setWorkingDirectory(job.getWorkingDirectory()); // 工作目录
+          taskFinal.run(job, umbilical); // run the task ，MapTask 或 ReduceTask
           return null;
         }
       });

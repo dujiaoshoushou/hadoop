@@ -29,7 +29,7 @@ public class TaskAttemptContainerLaunchedEvent extends TaskAttemptEvent {
    * @param shufflePort the port that shuffle is listening on.
    */
   public TaskAttemptContainerLaunchedEvent(TaskAttemptId id, int shufflePort) {
-    super(id, TaskAttemptEventType.TA_CONTAINER_LAUNCHED);
+    super(id, TaskAttemptEventType.TA_CONTAINER_LAUNCHED); // 将此事件发送给容器所属的TaskAttemptImpl
     this.shufflePort = shufflePort;
   }
 

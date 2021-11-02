@@ -36,6 +36,7 @@ import java.io.IOException;
 
 /**
  * This maintains a chain of {@link ApplicationMasterServiceProcessor}s.
+ * 这维护了一个 {@link ApplicationMasterServiceProcessor} 链。
  */
 class AMSProcessingChain implements ApplicationMasterServiceProcessor {
 

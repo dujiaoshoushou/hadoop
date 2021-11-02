@@ -108,6 +108,7 @@ public class MapReduceChildJVM {
       InetSocketAddress taskAttemptListenerAddr, Task task, 
       JVMId jvmID) {
 
+    // attemptID就是taskID
     TaskAttemptID attemptID = task.getTaskID();
     JobConf conf = task.conf;
 
@@ -145,6 +146,7 @@ public class MapReduceChildJVM {
     //  </property>
     //
     String javaOpts = getChildJavaOpts(conf, task.isMapTask());
+    // 将命令行变量taskid替换成实际的attemptID
     javaOpts = javaOpts.replace("@taskid@", attemptID.toString());
     String [] javaOptsSplit = javaOpts.split(" ");
     for (int i = 0; i < javaOptsSplit.length; i++) {
@@ -168,16 +170,16 @@ public class MapReduceChildJVM {
     }
 
     // Add main class and its arguments 
-    vargs.add(YarnChild.class.getName());  // main of Child
+    vargs.add(YarnChild.class.getName());  // main of Child，Java主类的名称是"YarnChild"
     // pass TaskAttemptListener's address
-    vargs.add(taskAttemptListenerAddr.getAddress().getHostAddress()); 
-    vargs.add(Integer.toString(taskAttemptListenerAddr.getPort())); 
-    vargs.add(attemptID.toString());                      // pass task identifier
+    vargs.add(taskAttemptListenerAddr.getAddress().getHostAddress()); // ip地址
+    vargs.add(Integer.toString(taskAttemptListenerAddr.getPort()));  // 端口号
+    vargs.add(attemptID.toString());                      // pass task identifier，TaskAttemptID
 
-    // Finally add the jvmID
+    // Finally add the jvmID，java虚拟机ID
     vargs.add(String.valueOf(jvmID.getId()));
-    vargs.add("1>" + getTaskLogFile(TaskLog.LogName.STDOUT));
-    vargs.add("2>" + getTaskLogFile(TaskLog.LogName.STDERR));
+    vargs.add("1>" + getTaskLogFile(TaskLog.LogName.STDOUT)); // 输入重定向
+    vargs.add("2>" + getTaskLogFile(TaskLog.LogName.STDERR)); // 输出重定向
 
     // Final commmand
     StringBuilder mergedCommand = new StringBuilder();

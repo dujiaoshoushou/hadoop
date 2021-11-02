@@ -241,7 +241,7 @@ public class LocalContainerLauncher extends AbstractService implements
       // write same dirname or filename:  no chdir() in Java
       while (!Thread.currentThread().isInterrupted()) {
         try {
-          event = eventQueue.take();
+          event = eventQueue.take(); // 从队列中摘下一个事件
         } catch (InterruptedException e) {  // mostly via T_KILL? JOB_KILL?
           LOG.warn("Returning, interrupted : " + e);
           break;
@@ -254,13 +254,13 @@ public class LocalContainerLauncher extends AbstractService implements
           final ContainerRemoteLaunchEvent launchEv =
               (ContainerRemoteLaunchEvent)event;
           
-          // execute the task on a separate thread
+          // execute the task on a separate thread，另起一个线程，变成Future
           Future<?> future = taskRunner.submit(new Runnable() {
             public void run() {
-              runTask(launchEv, localMapFiles);
+              runTask(launchEv, localMapFiles); // 这个新创建的线程就做这么一件事，这里是重点
             }
           });
-          // remember the current attempt
+          // remember the current attempt，放入futures集合中
           futures.put(event.getTaskAttemptID(), future);
 
         } else if (event.getType() == EventType.CONTAINER_REMOTE_CLEANUP) {
@@ -319,8 +319,8 @@ public class LocalContainerLauncher extends AbstractService implements
       TaskAttemptId attemptID = launchEv.getTaskAttemptID(); 
 
       Job job = context.getAllJobs().get(attemptID.getTaskId().getJobId());
-      int numMapTasks = job.getTotalMaps();
-      int numReduceTasks = job.getTotalReduces();
+      int numMapTasks = job.getTotalMaps(); // 从Job对象中获取Map任务的总数
+      int numReduceTasks = job.getTotalReduces(); // 从Job对象中获取reduce的任务数
 
       // YARN (tracking) Task:
       org.apache.hadoop.mapreduce.v2.app.job.Task ytask =
@@ -335,10 +335,11 @@ public class LocalContainerLauncher extends AbstractService implements
       //There is no port number because we are not really talking to a task
       // tracker.  The shuffle is just done through local files.  So the
       // port number is set to -1 in this case.
+      // 将此事件发送给相应的TaskAttemptImpl对象，使其转入RUNNING状态
       context.getEventHandler().handle(
           new TaskAttemptContainerLaunchedEvent(attemptID, -1));
 
-      if (numMapTasks == 0) {
+      if (numMapTasks == 0) { // 如果本作业没有Mapper
         doneWithMaps = true;
       }
 
@@ -351,8 +352,11 @@ public class LocalContainerLauncher extends AbstractService implements
           } else {
             jce.addCounterUpdate(JobCounter.NUM_UBER_SUBREDUCES, 1);
           }
-          context.getEventHandler().handle(jce);
+          context.getEventHandler().handle(jce); // 将此事件发送个JobImpl对象，更新统计数字
         }
+        /**
+         * 这里是重点
+         */
         runSubtask(remoteTask, ytask.getType(), attemptID, numMapTasks,
                    (numReduceTasks > 0), localMapFiles);
 
@@ -429,7 +433,7 @@ public class LocalContainerLauncher extends AbstractService implements
         // META-FIXME: do we want the extra sanity-checking (doneWithMaps,
         // etc.), or just assume/hope the state machine(s) and uber-AM work
         // as expected?
-        if (taskType == TaskType.MAP) {
+        if (taskType == TaskType.MAP) { // 投运MapTask
           if (doneWithMaps) {
             LOG.error("CONTAINER_REMOTE_LAUNCH contains a map task ("
                       + attemptID + "), but should be finished with maps");
@@ -438,8 +442,10 @@ public class LocalContainerLauncher extends AbstractService implements
 
           MapTask map = (MapTask)task;
           map.setConf(conf);
-
-          map.run(conf, umbilical);
+          /**
+           * 这里是重点
+           */
+          map.run(conf, umbilical); // 调用MapTask.run函数
 
           if (renameOutputs) {
             MapOutputFile renamed = renameMapOutputForReduce(conf, attemptID,
@@ -471,8 +477,10 @@ public class LocalContainerLauncher extends AbstractService implements
 
           ReduceTask reduce = (ReduceTask)task;
           reduce.setLocalMapFiles(localMapFiles);
-          reduce.setConf(conf);          
-
+          reduce.setConf(conf);
+          /**
+           * 调用reduce的任务，这里是重点
+           */
           reduce.run(conf, umbilical);
           relocalize();
         }

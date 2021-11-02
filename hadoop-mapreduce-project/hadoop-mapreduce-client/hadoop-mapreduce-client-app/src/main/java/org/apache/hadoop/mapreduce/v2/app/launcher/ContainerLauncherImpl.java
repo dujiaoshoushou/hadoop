@@ -154,13 +154,13 @@ public class ContainerLauncherImpl extends AbstractService implements
             StartContainerRequest.newInstance(containerLaunchContext,
               event.getContainerToken());
         List<StartContainerRequest> list = new ArrayList<StartContainerRequest>();
-        list.add(startRequest);
+        list.add(startRequest); // 把StartContainerRequest封装在一个List中
         StartContainersRequest requestList = StartContainersRequest.newInstance(list);
         StartContainersResponse response =
-            proxy.getContainerManagementProtocol().startContainers(requestList);
+            proxy.getContainerManagementProtocol().startContainers(requestList); // 通过proxy对目标节点进行RPC调用，返回response
         if (response.getFailedRequests() != null
             && response.getFailedRequests().containsKey(containerID)) {
-          throw response.getFailedRequests().get(containerID).deSerialize();
+          throw response.getFailedRequests().get(containerID).deSerialize(); // 如果出错就发起异常
         }
         ByteBuffer portInfo =
             response.getAllServicesMetaData().get(
@@ -182,7 +182,7 @@ public class ContainerLauncherImpl extends AbstractService implements
         // it from ASSIGNED to RUNNING state
         context.getEventHandler().handle(
             new TaskAttemptContainerLaunchedEvent(taskAttemptID, port));
-        this.state = ContainerState.RUNNING;
+        this.state = ContainerState.RUNNING; // ContainerLauncherImpl的状态进入RUNNING
       } catch (Throwable t) {
         String message = "Container launch failed for " + containerID + " : "
             + StringUtils.stringifyException(t);
@@ -293,7 +293,7 @@ public class ContainerLauncherImpl extends AbstractService implements
 
         while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
           try {
-            event = eventQueue.take();
+            event = eventQueue.take(); // 从eventQueue中摘下一个事件
           } catch (InterruptedException e) {
             if (!stopped.get()) {
               LOG.error("Returning, interrupted : " + e);
@@ -327,6 +327,8 @@ public class ContainerLauncherImpl extends AbstractService implements
 
           // the events from the queue are handled in parallel
           // using a thread pool
+          // createEventProcessor(event) 为此事件创建一个Runnable
+          // 并放入线程池中执行
           launcherPool.execute(createEventProcessor(event));
 
           // TODO: Group launching of multiple containers to a single
@@ -391,7 +393,7 @@ public class ContainerLauncherImpl extends AbstractService implements
       case CONTAINER_REMOTE_LAUNCH:
         ContainerRemoteLaunchEvent launchEvent
             = (ContainerRemoteLaunchEvent) event;
-        c.launch(launchEvent);
+        c.launch(launchEvent); // 投送容器并发起其运行
         break;
 
       case CONTAINER_REMOTE_CLEANUP:
@@ -430,6 +432,10 @@ public class ContainerLauncherImpl extends AbstractService implements
   public ContainerManagementProtocolProxy.ContainerManagementProtocolProxyData
       getCMProxy(String containerMgrBindAddr, ContainerId containerId)
           throws IOException {
+    /*
+     * ContainerManagementProtocolProxy.getProxy
+     * 获取通向目标节点的proxy
+     */
     return cmProxy.getProxy(containerMgrBindAddr, containerId);
   }
 }

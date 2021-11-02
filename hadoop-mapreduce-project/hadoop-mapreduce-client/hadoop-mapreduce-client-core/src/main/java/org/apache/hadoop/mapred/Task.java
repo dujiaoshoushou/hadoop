@@ -602,13 +602,17 @@ abstract public class Task implements Writable, Configurable {
       if (LOG.isDebugEnabled()) {
         LOG.debug("using new api for output committer");
       }
+      /**
+       * 实际调用的事JobContextImpl.getOutputFormatClass()
+       * 如果未配置"mapreduce.job.outputformat.class",即为TextOutputFormat
+       */
       outputFormat =
         ReflectionUtils.newInstance(taskContext.getOutputFormatClass(), job);
-      committer = outputFormat.getOutputCommitter(taskContext);
+      committer = outputFormat.getOutputCommitter(taskContext); // 这个对象实现Mapper输出数据的格式化冰将结果写入文件 new FileOutputCommitter(outputPath, context);
     } else {
       committer = conf.getOutputCommitter();
     }
-    Path outputPath = FileOutputFormat.getOutputPath(conf);
+    Path outputPath = FileOutputFormat.getOutputPath(conf); // 输出文件路径
     if (outputPath != null) {
       if ((committer instanceof FileOutputCommitter)) {
         FileOutputFormat.setWorkOutputPath(conf, 
@@ -618,9 +622,15 @@ abstract public class Task implements Writable, Configurable {
       }
     }
     committer.setupTask(taskContext);
+    /**
+     * ResourceCalculatorProcessTree,用于了解进程的资源使用情况
+     */
     Class<? extends ResourceCalculatorProcessTree> clazz =
         conf.getClass(MRConfig.RESOURCE_CALCULATOR_PROCESS_TREE,
             null, ResourceCalculatorProcessTree.class);
+    /**
+     * 在Linux系统上是基于"/proc"的ProcfsBasedProcessTree
+     */
     pTree = ResourceCalculatorProcessTree
             .getResourceCalculatorProcessTree(System.getenv().get("JVM_PID"), clazz, conf);
     LOG.info(" Using ResourceCalculatorProcessTree : " + pTree);

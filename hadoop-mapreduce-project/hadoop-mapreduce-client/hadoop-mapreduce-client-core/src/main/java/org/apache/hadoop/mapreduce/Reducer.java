@@ -168,6 +168,9 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
     setup(context);
     try {
       while (context.nextKey()) {
+        /**
+         *  这里是真正的reduce操作，用户定义的reduce任务
+         */
         reduce(context.getCurrentKey(), context.getValues(), context);
         // If a back up store is used, reset it
         Iterator<VALUEIN> iter = context.getValues().iterator();

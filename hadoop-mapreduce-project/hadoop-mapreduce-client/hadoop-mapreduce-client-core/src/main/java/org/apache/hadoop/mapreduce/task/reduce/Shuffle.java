@@ -106,7 +106,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
     final EventFetcher<K, V> eventFetcher =
         new EventFetcher<K, V>(reduceId, umbilical, scheduler, this,
             maxEventsToFetch);
-    eventFetcher.start();
+    eventFetcher.start(); // 用来接受MapTask是否已经完成运行的信息
     
     // Start the map-output fetcher threads
     boolean isLocal = localMapFiles != null;
@@ -119,11 +119,11 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
           localMapFiles);
       fetchers[0].start();
     } else {
-      for (int i=0; i < numFetchers; ++i) {
+      for (int i=0; i < numFetchers; ++i) { // 数量取决于MapTask的多少
         fetchers[i] = new Fetcher<K, V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
-                                       reduceTask.getShuffleSecret());
-        fetchers[i].start();
+                                       reduceTask.getShuffleSecret()); // 数据复制这
+        fetchers[i].start(); // 启动其运行，开始从各个MapTask复制其输出的数据
       }
     }
     
@@ -139,7 +139,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
       }
     }
 
-    // Stop the event-fetcher thread
+    // Stop the event-fetcher thread，数据复制已经完成
     eventFetcher.shutDown();
     
     // Stop the map-output fetcher threads
@@ -150,7 +150,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
     // stop the scheduler
     scheduler.close();
 
-    copyPhase.complete(); // copy is already complete
+    copyPhase.complete(); // copy is already complete，数据复制阶段到此接受
     taskStatus.setPhase(TaskStatus.Phase.SORT);
     reduceTask.statusUpdate(umbilical);
 

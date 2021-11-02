@@ -93,6 +93,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Allocates the container from the ResourceManager scheduler.
+ * 从 ResourceManager 调度程序分配容器。
  */
 public class RMContainerAllocator extends RMContainerRequestor
     implements ContainerAllocator {
@@ -292,11 +293,13 @@ public class RMContainerAllocator extends RMContainerRequestor
     int completedTasks = completedMaps + getJob().getCompletedReduces();
     if ((lastCompletedTasks != completedTasks) ||
           (scheduledRequests.maps.size() > 0)) {
+      // 发生了变化
       lastCompletedTasks = completedTasks;
       recalculateReduceSchedule = true;
     }
 
     if (recalculateReduceSchedule) {
+      // 因为发生了变化，就要对正在等待分配资源的Reduce任务进行调度
       boolean reducerPreempted = preemptReducesIfNeeded();
 
       if (!reducerPreempted) {
@@ -379,9 +382,9 @@ public class RMContainerAllocator extends RMContainerRequestor
       boolean isMap = reqEvent.getAttemptID().getTaskId().getTaskType().
           equals(TaskType.MAP);
       if (isMap) {
-        handleMapContainerRequest(reqEvent);
+        handleMapContainerRequest(reqEvent); // 这是个Map任务
       } else {
-        handleReduceContainerRequest(reqEvent);
+        handleReduceContainerRequest(reqEvent); // 这是个Reduce任务
       }
       
     } else if (
@@ -451,11 +454,11 @@ public class RMContainerAllocator extends RMContainerRequestor
       reqEvent.getCapability().setMemorySize(
           reduceResourceRequest.getMemorySize());
 
-      if (reqEvent.getEarlierAttemptFailed()) {
-        //previously failed reducers are added to the front for fail fast
+      if (reqEvent.getEarlierAttemptFailed()) { // 这是原先失败了的尝试
+        //previously failed reducers are added to the front for fail fast，排在pendingReduces队列前面，以便尽快运行
         pendingReduces.addFirst(new ContainerRequest(reqEvent,
             PRIORITY_REDUCE, reduceNodeLabelExpression));
-      } else {
+      } else { // 这是正常的Reduce任务尝试
         //reduces are added to pending queue and are slowly ramped up
         pendingReduces.add(new ContainerRequest(reqEvent,
             PRIORITY_REDUCE, reduceNodeLabelExpression));
@@ -476,7 +479,7 @@ public class RMContainerAllocator extends RMContainerRequestor
     assert(reqEvent.getAttemptID().getTaskId().getTaskType().equals(
         TaskType.MAP));
 
-    Resource supportedMaxContainerCapability = getMaxContainerCapability();
+    Resource supportedMaxContainerCapability = getMaxContainerCapability(); // 最高限额
     JobId jobId = getJob().getID();
 
     if (mapResourceRequest.equals(Resources.none())) {
@@ -484,7 +487,7 @@ public class RMContainerAllocator extends RMContainerRequestor
       eventHandler.handle(new JobHistoryEvent(jobId,
           new NormalizedResourceEvent(
               org.apache.hadoop.mapreduce.TaskType.MAP,
-              mapResourceRequest.getMemorySize())));
+              mapResourceRequest.getMemorySize()))); // 这个事件只是为历史记录
       LOG.info("mapResourceRequest:" + mapResourceRequest);
     }
 
@@ -493,7 +496,7 @@ public class RMContainerAllocator extends RMContainerRequestor
         supportedMaxContainerCapability.getMemorySize()
         ||
         mapResourceRequest.getVirtualCores() >
-        supportedMaxContainerCapability.getVirtualCores()) {
+        supportedMaxContainerCapability.getVirtualCores()) { // 所申请的内存或VCore超过了最高限额，无法满足
       mapContainerRequestAccepted = false;
     }
 
@@ -503,8 +506,9 @@ public class RMContainerAllocator extends RMContainerRequestor
           mapResourceRequest.getMemorySize());
       reqEvent.getCapability().setVirtualCores(
           mapResourceRequest.getVirtualCores());
-      scheduledRequests.addMap(reqEvent); //maps are immediately scheduled
-    } else {
+      scheduledRequests.addMap(reqEvent); //maps are immediately scheduled 进入scheduledRequests队列，等待被提交给RM
+      // == RMContainerAllocator.ScheduledRequests.addMap(ContainerRequestEvent event)
+    } else { // 所申请的内存或VCore超过了最高限额，无法满足
       String diagMsg = "The required MAP capability is more than the " +
           "supported max container capability in the cluster. Killing" +
           " the Job. mapResourceRequest: " + mapResourceRequest +
@@ -790,7 +794,7 @@ public class RMContainerAllocator extends RMContainerRequestor
      * to contact the RM.
      */
     try {
-      response = makeRemoteRequest();
+      response = makeRemoteRequest(); // 向RM申请分配资源
       // Reset retry count if no exception occurred.
       retrystartTime = System.currentTimeMillis();
     } catch (ApplicationAttemptNotFoundException e ) {
@@ -888,7 +892,7 @@ public class RMContainerAllocator extends RMContainerRequestor
     for (ContainerStatus cont : finishedContainers) {
       processFinishedContainer(cont);
     }
-    return newContainers;
+    return newContainers; // 返回后成为上面的allocatedContainers
   }
 
   @SuppressWarnings("unchecked")
@@ -1184,7 +1188,7 @@ public class RMContainerAllocator extends RMContainerRequestor
         if (PRIORITY_FAST_FAIL_MAP.equals(priority) 
             || PRIORITY_MAP.equals(priority)
             || PRIORITY_OPPORTUNISTIC_MAP.equals(priority)) {
-          if (ResourceCalculatorUtils.computeAvailableContainers(allocatedResource,
+          if (ResourceCalculatorUtils.computeAvailableContainers(allocatedResource, // 计算可用的容器
               mapResourceRequest, getSchedulerResourceTypes()) <= 0
               || maps.isEmpty()) {
             LOG.info("Cannot assign container " + allocated 
@@ -1222,8 +1226,8 @@ public class RMContainerAllocator extends RMContainerRequestor
         
         // do not assign if allocated container is on a  
         // blacklisted host
-        String allocatedHost = allocated.getNodeId().getHost();
-        if (isNodeBlacklisted(allocatedHost)) {
+        String allocatedHost = allocated.getNodeId().getHost(); // 所分配容器的指定的节点
+        if (isNodeBlacklisted(allocatedHost)) { // 如果这个节点在黑名单上就要求替换
           // we need to request for a new container 
           // and release the current one
           LOG.info("Got allocated container on a blacklisted "
@@ -1265,7 +1269,7 @@ public class RMContainerAllocator extends RMContainerRequestor
        
       // release container if we could not assign it 
       it = allocatedContainers.iterator();
-      while (it.hasNext()) {
+      while (it.hasNext()) { //
         Container allocated = it.next();
         LOG.info("Releasing unassigned container " + allocated);
         containerNotAssigned(allocated);
@@ -1279,6 +1283,7 @@ public class RMContainerAllocator extends RMContainerRequestor
       decContainerReq(assigned);
 
       // send the container-assigned event to task attempt
+      // 将容器分配的事件发送到TaskAttempt
       eventHandler.handle(new TaskAttemptContainerAssignedEvent(
           assigned.attemptID, allocated, applicationACLs));
 
@@ -1316,7 +1321,7 @@ public class RMContainerAllocator extends RMContainerRequestor
         
     private void assignContainers(List<Container> allocatedContainers) {
       Iterator<Container> it = allocatedContainers.iterator();
-      while (it.hasNext()) {
+      while (it.hasNext()) { // 将分配到的每一个容器指定给一个TaskAttempt
         Container allocated = it.next();
         ContainerRequest assigned = assignWithoutLocality(allocated);
         if (assigned != null) {

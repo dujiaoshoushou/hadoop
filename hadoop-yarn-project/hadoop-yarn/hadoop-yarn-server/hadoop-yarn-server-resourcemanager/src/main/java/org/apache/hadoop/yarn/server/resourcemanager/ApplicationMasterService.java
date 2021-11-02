@@ -396,7 +396,7 @@ public class ApplicationMasterService extends AbstractService implements
     ApplicationAttemptId appAttemptId =
         amrmTokenIdentifier.getApplicationAttemptId();
 
-    this.amLivelinessMonitor.receivedPing(appAttemptId);
+    this.amLivelinessMonitor.receivedPing(appAttemptId); // 这个AM还活着
 
     /* check if its in cache */
     AllocateResponseLock lock = responseMap.get(appAttemptId);
@@ -432,7 +432,7 @@ public class ApplicationMasterService extends AbstractService implements
       AllocateResponse response =
           recordFactory.newRecordInstance(AllocateResponse.class);
       this.amsProcessingChain.allocate(
-          amrmTokenIdentifier.getApplicationAttemptId(), request, response);
+          amrmTokenIdentifier.getApplicationAttemptId(), request, response); // AMS处理链（ApplicationMasterServiceProcessor）重点看
 
       // update AMRMToken if the token is rolled-up
       MasterKeyData nextMasterKey =

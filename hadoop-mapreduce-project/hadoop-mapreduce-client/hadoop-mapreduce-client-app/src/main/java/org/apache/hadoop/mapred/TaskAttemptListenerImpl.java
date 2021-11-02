@@ -494,6 +494,13 @@ public class TaskAttemptListenerImpl extends CompositeService
     throw new IOException("Not yet implemented.");
   }
 
+  /**
+   * 应对来自YarnChild的认领请求
+   * @param context the JvmContext of the JVM w.r.t the TaskTracker that
+   *  launched it
+   * @return
+   * @throws IOException
+   */
   @Override
   public JvmTask getTask(JvmContext context) throws IOException {
 
@@ -513,27 +520,27 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     // Try to look up the task. We remove it directly as we don't give
     // multiple tasks to a JVM
-    if (!jvmIDToActiveAttemptMap.containsKey(wJvmID)) {
+    if (!jvmIDToActiveAttemptMap.containsKey(wJvmID)) { // 这个JVM的task已经被领走
       LOG.info("JVM with ID: " + jvmId + " is invalid and will be killed.");
-      jvmTask = TASK_FOR_INVALID_JVM;
-    } else {
-      if (!launchedJVMs.contains(wJvmID)) {
+      jvmTask = TASK_FOR_INVALID_JVM; // 返回一个空白的JvmTask
+    } else { // 尚未被领走
+      if (!launchedJVMs.contains(wJvmID)) { // 这个JVM尚未登记
         jvmTask = null;
         LOG.info("JVM with ID: " + jvmId
             + " asking for task before AM launch registered. Given null task");
-      } else {
+      } else { // JVM已登记，任务尚未被领走
         // remove the task as it is no more needed and free up the memory.
         // Also we have already told the JVM to process a task, so it is no
         // longer pending, and further request should ask it to exit.
         org.apache.hadoop.mapred.Task task =
-            jvmIDToActiveAttemptMap.remove(wJvmID);
-        launchedJVMs.remove(wJvmID);
+            jvmIDToActiveAttemptMap.remove(wJvmID); // 从jvmIDToActiveAttemptMap集合中取出预先安排好的任务
+        launchedJVMs.remove(wJvmID); // 从launchedJVMs集合中撤掉已领取的任务
         LOG.info("JVM with ID: " + jvmId + " given task: " + task.getTaskID());
         task.setEncryptedSpillKey(encryptedSpillKey);
-        jvmTask = new JvmTask(task, false);
+        jvmTask = new JvmTask(task, false); // 将此任务包装在一个JvmTask中
       }
     }
-    return jvmTask;
+    return jvmTask; // 返回该jvmTask
   }
 
   @Override
@@ -543,7 +550,7 @@ public class TaskAttemptListenerImpl extends CompositeService
     // when the jvm comes back to ask for Task.
 
     // A JVM not present in this map is an illegal task/JVM.
-    jvmIDToActiveAttemptMap.put(jvmID, task);
+    jvmIDToActiveAttemptMap.put(jvmID, task); // 将此Task连同其jvmID记入一个Map
   }
 
   @Override

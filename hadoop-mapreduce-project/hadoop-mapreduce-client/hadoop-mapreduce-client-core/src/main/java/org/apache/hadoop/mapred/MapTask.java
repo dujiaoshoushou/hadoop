@@ -316,39 +316,46 @@ public class MapTask extends Task {
       // If there are no reducers then there won't be any sort. Hence the map 
       // phase will govern the entire attempt's progress.
       if (conf.getNumReduceTasks() == 0) {
+        /**
+         * 如果本作业中没有ReduceTask，那Mapper的输出就不需要排序
+         * 所以Map操作的工作量就是这个任务的全部工作量
+         */
         mapPhase = getProgress().addPhase("map", 1.0f);
       } else {
         // If there are reducers then the entire attempt's progress will be 
         // split between the map phase (67%) and the sort phase (33%).
-        mapPhase = getProgress().addPhase("map", 0.667f);
-        sortPhase  = getProgress().addPhase("sort", 0.333f);
+        /**
+         * 否则，如果有Reducer，那就需要对输出进行排序；
+         */
+        mapPhase = getProgress().addPhase("map", 0.667f); // Map阶段的工作量算2/3
+        sortPhase  = getProgress().addPhase("sort", 0.333f); // 输出排序阶段的工作量算1/3
       }
     }
     TaskReporter reporter = startReporter(umbilical);
  
-    boolean useNewApi = job.getUseNewMapper();
-    initialize(job, getJobID(), reporter, useNewApi);
+    boolean useNewApi = job.getUseNewMapper(); // 是新API还是老API
+    initialize(job, getJobID(), reporter, useNewApi); // MapTask的初始化
 
     // check if it is a cleanupJobTask
     if (jobCleanup) {
-      runJobCleanupTask(umbilical, reporter);
+      runJobCleanupTask(umbilical, reporter); // 如果只是要求作业清扫，则清扫一下就返回
       return;
     }
     if (jobSetup) {
-      runJobSetupTask(umbilical, reporter);
+      runJobSetupTask(umbilical, reporter); // 如果只是为了任务执行"打前站"，那就准备一下就返回
       return;
     }
     if (taskCleanup) {
-      runTaskCleanupTask(umbilical, reporter);
+      runTaskCleanupTask(umbilical, reporter); // 如果值要任务清扫，那清扫一下就返回
       return;
     }
 
-    if (useNewApi) {
+    if (useNewApi) { // 如果采用新的API的mapper
       runNewMapper(job, splitMetaInfo, umbilical, reporter);
-    } else {
+    } else { // 采用老的API的mapper
       runOldMapper(job, splitMetaInfo, umbilical, reporter);
     }
-    done(umbilical, reporter);
+    done(umbilical, reporter); // 通知MRAppMaster，本任务已经完成
   }
 
   public Progress getSortPhase() {
@@ -740,6 +747,20 @@ public class MapTask extends Task {
     }
   }
 
+  /**
+   *
+   * @param job
+   * @param splitIndex 表明这个Map任务的输入来自输入文件中的哪一个Split
+   * @param umbilical
+   * @param reporter
+   * @param <INKEY>
+   * @param <INVALUE>
+   * @param <OUTKEY>
+   * @param <OUTVALUE>
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws InterruptedException
+   */
   @SuppressWarnings("unchecked")
   private <INKEY,INVALUE,OUTKEY,OUTVALUE>
   void runNewMapper(final JobConf job,
@@ -753,7 +774,7 @@ public class MapTask extends Task {
       new org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl(job, 
                                                                   getTaskID(),
                                                                   reporter);
-    // make a mapper
+    // make a mapper，这就是用户给定的Mapper类，如果没有给定就采用默认的Mapper.class
     org.apache.hadoop.mapreduce.Mapper<INKEY,INVALUE,OUTKEY,OUTVALUE> mapper =
       (org.apache.hadoop.mapreduce.Mapper<INKEY,INVALUE,OUTKEY,OUTVALUE>)
         ReflectionUtils.newInstance(taskContext.getMapperClass(), job);
@@ -763,22 +784,40 @@ public class MapTask extends Task {
         ReflectionUtils.newInstance(taskContext.getInputFormatClass(), job);
     // rebuild the input split
     org.apache.hadoop.mapreduce.InputSplit split = null;
+    /**
+     * Mapper的输入文件一般是分片的，每个MapTask一片，通常就是一个数据块
+     * 根据splitIndex找到输入文件（是HDFS文件）中的某个块
+     * HDFS的文件的每个块都是宿主机文件系统中的一个文件
+     */
     split = getSplitDetails(new Path(splitIndex.getSplitLocation()),
         splitIndex.getStartOffset());
     LOG.info("Processing split: " + split);
-
+    /**
+     * 用于从输入文件读入
+     * 带Tracking功能的RecordReader，这个对象将为Mapper提供输入
+     */
     org.apache.hadoop.mapreduce.RecordReader<INKEY,INVALUE> input =
       new NewTrackingRecordReader<INKEY,INVALUE>
         (split, inputFormat, reporter, taskContext);
-    
+    /**
+     * 碰到损坏的记录是否跳过
+     */
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
     org.apache.hadoop.mapreduce.RecordWriter output = null;
     
     // get an output object
+
     if (job.getNumReduceTasks() == 0) {
+      /**
+       * 如果不用Reducer，则Mapper直接输出结果
+       * 就是整个作业的输出
+       */
       output = 
         new NewDirectOutputCollector(taskContext, job, umbilical, reporter);
     } else {
+      /**
+       * 一般都要将mapper的输出收集起来供reducer处理
+       */
       output = new NewOutputCollector(taskContext, job, umbilical, reporter);
     }
 
@@ -795,10 +834,10 @@ public class MapTask extends Task {
               mapContext);
 
     try {
-      input.initialize(split, mapperContext);
-      mapper.run(mapperContext);
+      input.initialize(split, mapperContext); // 输入流的初始化
+      mapper.run(mapperContext); // 开始执行用户指定的Mapper
       mapPhase.complete();
-      setPhase(TaskStatus.Phase.SORT);
+      setPhase(TaskStatus.Phase.SORT); // Map阶段结束，进入排序阶段
       statusUpdate(umbilical);
       input.close();
       input = null;

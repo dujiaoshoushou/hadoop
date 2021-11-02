@@ -150,6 +150,10 @@ public class ReduceTask extends Task {
     this.localMapFiles = mapFiles;
   }
 
+  /**
+   * 用于解压缩
+   * @return
+   */
   private CompressionCodec initCodec() {
     // check if map-outputs are to be compressed
     if (conf.getCompressMapOutput()) {
@@ -327,6 +331,9 @@ public class ReduceTask extends Task {
       reducePhase = getProgress().addPhase("reduce");
     }
     // start thread that will handle communication with parent
+    /**
+     * 创建负责报告进度的线程
+     */
     TaskReporter reporter = startReporter(umbilical);
     
     boolean useNewApi = job.getUseNewReducer();
@@ -334,32 +341,37 @@ public class ReduceTask extends Task {
 
     // check if it is a cleanupJobTask
     if (jobCleanup) {
-      runJobCleanupTask(umbilical, reporter);
+      runJobCleanupTask(umbilical, reporter); // 如果只是要求作业清扫，那清扫一下就返回
       return;
     }
     if (jobSetup) {
-      runJobSetupTask(umbilical, reporter);
+      runJobSetupTask(umbilical, reporter); // 如果只是为任务执行打"前站"，那就准备一下就返回
       return;
     }
     if (taskCleanup) {
-      runTaskCleanupTask(umbilical, reporter);
+      runTaskCleanupTask(umbilical, reporter); // 如果只要求任务清扫，则清扫一下就返回
       return;
     }
     
-    // Initialize the codec
+    // Initialize the codec 如果需要压缩
     codec = initCodec();
     RawKeyValueIterator rIter = null;
     ShuffleConsumerPlugin shuffleConsumerPlugin = null;
-    
+    /**
+     * 用户可以设置是否在Mapper与Reducer之间加一个Combiner
+     */
     Class combinerClass = conf.getCombinerClass();
     CombineOutputCollector combineCollector = 
       (null != combinerClass) ? 
      new CombineOutputCollector(reduceCombineOutputCounter, reporter, conf) : null;
-
+    /**
+     * 以"org.apache.hadoop.mapreduce.task.reduce.Shuffle"为键，看conf中有否设置用于
+     * shuffle操作的插件，默认为org.apache.hadoop.mapreduce.task.reduce.Shuffle
+     */
     Class<? extends ShuffleConsumerPlugin> clazz =
           job.getClass(MRConfig.SHUFFLE_CONSUMER_PLUGIN, Shuffle.class, ShuffleConsumerPlugin.class);
 					
-    shuffleConsumerPlugin = ReflectionUtils.newInstance(clazz, job);
+    shuffleConsumerPlugin = ReflectionUtils.newInstance(clazz, job); // 创建插件对象
     LOG.info("Using ShuffleConsumerPlugin: " + shuffleConsumerPlugin);
 
     ShuffleConsumerPlugin.Context shuffleContext = 
@@ -374,19 +386,19 @@ public class ReduceTask extends Task {
                   mapOutputFile, localMapFiles);
     shuffleConsumerPlugin.init(shuffleContext);
 
-    rIter = shuffleConsumerPlugin.run();
+    rIter = shuffleConsumerPlugin.run(); // 将MapTask的输出复制过来，这里是重点 ==Shuffle.run，
 
     // free up the data structures
     mapOutputFilesOnDisk.clear();
     
-    sortPhase.complete();                         // sort is complete
-    setPhase(TaskStatus.Phase.REDUCE); 
+    sortPhase.complete();                         // sort is complete，复制并排序的阶段已经结束
+    setPhase(TaskStatus.Phase.REDUCE);  // 开始进行Reduce计算
     statusUpdate(umbilical);
-    Class keyClass = job.getMapOutputKeyClass();
-    Class valueClass = job.getMapOutputValueClass();
-    RawComparator comparator = job.getOutputValueGroupingComparator();
+    Class keyClass = job.getMapOutputKeyClass(); // 与Mapper输出的Key相匹配
+    Class valueClass = job.getMapOutputValueClass(); // 与Mapper输出的Value相匹配
+    RawComparator comparator = job.getOutputValueGroupingComparator(); // 用于Key的比较运算
 
-    if (useNewApi) {
+    if (useNewApi) { // 如果采用新API的reduce
       runNewReducer(job, umbilical, reporter, rIter, comparator, 
                     keyClass, valueClass);
     } else {
@@ -611,7 +623,7 @@ public class ReduceTask extends Task {
     // make a reducer
     org.apache.hadoop.mapreduce.Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE> reducer =
       (org.apache.hadoop.mapreduce.Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE>)
-        ReflectionUtils.newInstance(taskContext.getReducerClass(), job);
+        ReflectionUtils.newInstance(taskContext.getReducerClass(), job); // 获取用户给定的Reducer类名，默认Reducer.class
     org.apache.hadoop.mapreduce.RecordWriter<OUTKEY,OUTVALUE> trackedRW = 
       new NewTrackingRecordWriter<OUTKEY, OUTVALUE>(this, taskContext);
     job.setBoolean("mapred.skip.on", isSkipping());
@@ -625,6 +637,9 @@ public class ReduceTask extends Task {
                                                reporter, comparator, keyClass,
                                                valueClass);
     try {
+      /**
+       * 这里是重点，reduce开始执行
+       */
       reducer.run(reducerContext);
     } finally {
       trackedRW.close(reducerContext);

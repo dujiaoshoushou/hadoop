@@ -364,7 +364,7 @@ public class ApplicationImpl implements Application {
     public void transition(ApplicationImpl app, ApplicationEvent event) {
       app.dispatcher.getEventHandler().handle(
           new ApplicationLocalizationEvent(
-              LocalizationEventType.INIT_APPLICATION_RESOURCES, app));
+              LocalizationEventType.INIT_APPLICATION_RESOURCES, app)); // 向ResourceLocalizationService发送此事件
       app.setAppLogInitedTimestamp(event.getTimestamp());
       try {
         app.appStateStore.storeApplication(app.appId, buildAppProto(app));

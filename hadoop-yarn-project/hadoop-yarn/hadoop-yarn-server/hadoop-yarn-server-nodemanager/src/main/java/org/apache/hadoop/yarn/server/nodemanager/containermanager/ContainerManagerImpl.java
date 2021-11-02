@@ -945,7 +945,7 @@ public class ContainerManagerImpl extends CompositeService implements
     // been added to the containers map in NMContext.
     synchronized (this.context) {
       for (StartContainerRequest request : requests
-          .getStartContainerRequests()) {
+          .getStartContainerRequests()) { // 对于同一请求中的每个容器
         ContainerId containerId = null;
         try {
           if (request.getContainerToken() == null
