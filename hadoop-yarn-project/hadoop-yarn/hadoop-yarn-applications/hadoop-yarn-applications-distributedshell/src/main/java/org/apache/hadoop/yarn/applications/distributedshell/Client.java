@@ -740,14 +740,14 @@ public class Client {
     }
 
     // Get a new application id
-    YarnClientApplication app = yarnClient.createApplication();
+    YarnClientApplication app = yarnClient.createApplication(); // 向RM请求建立一个App
     GetNewApplicationResponse appResponse = app.getNewApplicationResponse();
     // TODO get min/max resource capabilities from RM and change memory ask if needed
     // If we do not have min/max, we may not be able to correctly request 
     // the required resources from the RM for the app master
     // Memory ask has to be a multiple of min and less than max. 
     // Dump out information about cluster capability as seen by the resource manager
-    long maxMem = appResponse.getMaximumResourceCapability().getMemorySize();
+    long maxMem = appResponse.getMaximumResourceCapability().getMemorySize(); // RM承诺拨给的内存
     LOG.info("Max mem capability of resources in this cluster " + maxMem);
 
     // A resource ask cannot exceed the max. 
@@ -758,7 +758,7 @@ public class Client {
       amMemory = maxMem;
     }
 
-    int maxVCores = appResponse.getMaximumResourceCapability().getVirtualCores();
+    int maxVCores = appResponse.getMaximumResourceCapability().getVirtualCores(); // RM承诺拨给的VCore
     LOG.info("Max virtual cores capability of resources in this cluster " + maxVCores);
     
     if (amVCores > maxVCores) {
@@ -930,19 +930,19 @@ public class Client {
     }
 
     env.put("CLASSPATH", classPathEnv.toString());
-
+    // 构建准备让RM指定和安排在某个NM节点上启动的Shell命令行
     // Set the necessary command to execute the application master 
     Vector<CharSequence> vargs = new Vector<CharSequence>(30);
 
     // Set java executable command 
     LOG.info("Setting up app master command");
     // Need extra quote here because JAVA_HOME might contain space on Windows,
-    // e.g. C:/Program Files/Java...
+    // e.g. C:/Program Files/Java... 首先，要启动的是Java
     vargs.add("\"" + Environment.JAVA_HOME.$$() + "/bin/java\"");
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");
     // Set class name 
-    vargs.add(appMasterMainClass);
+    vargs.add(appMasterMainClass); // 要求Java虚拟机运行的是ApplicationMaster
     // Set params for Application Master
     if (containerType != null) {
       vargs.add("--container_type " + String.valueOf(containerType));
@@ -1004,7 +1004,7 @@ public class Client {
 
     // Get final commmand
     StringBuilder command = new StringBuilder();
-    for (CharSequence str : vargs) {
+    for (CharSequence str : vargs) { // 完成命令行的构筑
       command.append(str).append(" ");
     }
 
@@ -1012,7 +1012,7 @@ public class Client {
     List<String> commands = new ArrayList<String>();
     commands.add(command.toString());
 
-    // Set up the container launch context for the application master
+    // Set up the container launch context for the application master 创建CLC
     ContainerLaunchContext amContainer = ContainerLaunchContext.newInstance(
       localResources, env, commands, null, null, null);
 
@@ -1061,7 +1061,7 @@ public class Client {
       amContainer.setTokens(tokens);
     }
 
-    appContext.setAMContainerSpec(amContainer);
+    appContext.setAMContainerSpec(amContainer); // amContainer是CLC，并非Container
 
     // Set the priority for the application master
     // TODO - what is the range for priority? how to decide? 
@@ -1079,7 +1079,7 @@ public class Client {
     // or an exception thrown to denote some form of a failure
     LOG.info("Submitting application to ASM");
 
-    yarnClient.submitApplication(appContext);
+    yarnClient.submitApplication(appContext); // 向RM提交作业请求
 
     // TODO
     // Try submitting the same request again

@@ -90,8 +90,8 @@ extends AMRMClientAsync<T> {
   public AMRMClientAsyncImpl(AMRMClient<T> client, int intervalMs,
       AbstractCallbackHandler callbackHandler) {
     super(client, intervalMs, callbackHandler);
-    heartbeatThread = new HeartbeatThread();
-    handlerThread = new CallbackHandlerThread();
+    heartbeatThread = new HeartbeatThread(); // 创建HeartbeatThread线程
+    handlerThread = new CallbackHandlerThread(); // 创建CallbackHandlerThread线程
     responseQueue = new LinkedBlockingQueue<>();
     keepRunning = true;
   }

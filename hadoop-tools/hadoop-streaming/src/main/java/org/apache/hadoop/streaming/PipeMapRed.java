@@ -58,7 +58,7 @@ public abstract class PipeMapRed {
    * Returns the DataOutput to which the client input is written.
    */
   public DataOutput getClientOutput() {
-    return clientOut_;
+    return clientOut_; // 这样，PipeMapper的inWrite_,即TextInputWriter的clientOut，就与外挂进程的clientOut_对接上了。
   }
   
   /**
@@ -144,14 +144,21 @@ public abstract class PipeMapRed {
     return (String[]) argList.toArray(new String[0]);
   }
 
+  /**
+   * 这里是重点
+   * @param job
+   */
   public void configure(JobConf job) {
     try {
-      String argv = getPipeCommand(job);
+      String argv = getPipeCommand(job); // 用作外挂mapper的那部分命令行
 
       joinDelay_ = job.getLong("stream.joindelay.milli", 0);
 
       job_ = job;
-      
+      /**
+       * App中或者配置文件中也许设置了这个
+       * 默认TextInputWriter，必须实现InputWriter界面
+       */
       mapInputWriterClass_ = 
         job_.getClass("stream.map.input.writer.class", 
           TextInputWriter.class, InputWriter.class);
@@ -166,18 +173,18 @@ public abstract class PipeMapRed {
           TextOutputReader.class, OutputReader.class);
       nonZeroExitIsFailure_ = job_.getBoolean("stream.non.zero.exit.is.failure", true);
       
-      doPipe_ = getDoPipe();
-      if (!doPipe_) return;
+      doPipe_ = getDoPipe(); // 是否允许使用pipe机制，在PipeMapper中固定返回true
+      if (!doPipe_) return; // 如果不允许就不往下走了
 
       setStreamJobDetails(job);
       
-      String[] argvSplit = splitArgs(argv);
-      String prog = argvSplit[0];
-      File currentDir = new File(".").getAbsoluteFile();
-      if (new File(prog).isAbsolute()) {
+      String[] argvSplit = splitArgs(argv); // 把用作外挂mapper的那部分命令行转换成数组
+      String prog = argvSplit[0]; // 其中第一项就是程序名，例如"grep"
+      File currentDir = new File(".").getAbsoluteFile(); // 获取当前所在目录路径
+      if (new File(prog).isAbsolute()) { // 如果可执行程序的路径是绝对路径
         // we don't own it. Hope it is executable
-      } else {
-        FileUtil.chmod(new File(currentDir, prog).toString(), "a+x");
+      } else { // 可执行程序的路径是相对路径，在当前目录下
+        FileUtil.chmod(new File(currentDir, prog).toString(), "a+x"); // 修改文件模式为可执行
       }
 
       // 
@@ -187,7 +194,7 @@ public abstract class PipeMapRed {
       // up the PATH env variable. If it still fails, look it up in the
       // tasktracker's local working directory
       //
-      if (!new File(argvSplit[0]).isAbsolute()) {
+      if (!new File(argvSplit[0]).isAbsolute()) { // 设置运行环境
         PathFinder finder = new PathFinder("PATH");
         finder.prependPathComponent(currentDir.toString());
         File f = finder.getAbsolutePath(argvSplit[0]);
@@ -204,17 +211,17 @@ public abstract class PipeMapRed {
       envPut(childEnv, "TMPDIR", System.getProperty("java.io.tmpdir"));
 
       // Start the process
-      ProcessBuilder builder = new ProcessBuilder(argvSplit);
+      ProcessBuilder builder = new ProcessBuilder(argvSplit); // 构筑宿主机操作系统上的命令行
       builder.environment().putAll(childEnv.toMap());
-      sim = builder.start();
+      sim = builder.start(); // 执行该命令行，启动mapper进程，返回一个Process对象sim
 
       clientOut_ = new DataOutputStream(new BufferedOutputStream(
-                                              sim.getOutputStream(),
-                                              BUFFER_SIZE));
+                                              sim.getOutputStream(), // 获取该进制基于stdout通道的输出流
+                                              BUFFER_SIZE)); // 在此基础上进一步构筑带缓冲的数据输出流
       clientIn_ = new DataInputStream(new BufferedInputStream(
-                                              sim.getInputStream(),
-                                              BUFFER_SIZE));
-      clientErr_ = new DataInputStream(new BufferedInputStream(sim.getErrorStream()));
+                                              sim.getInputStream(), // 获取该进程基于stdin通道的输入流
+                                              BUFFER_SIZE)); // 在此基础上进一步构筑带缓冲的数据输入流
+      clientErr_ = new DataInputStream(new BufferedInputStream(sim.getErrorStream())); // 获取该进程基于stderr通道的出错信息流，在此基础上构筑带缓冲的数据输入流
       startTime_ = System.currentTimeMillis();
 
     } catch (IOException e) {
@@ -350,7 +357,7 @@ public abstract class PipeMapRed {
   InputWriter createInputWriter(Class<? extends InputWriter> inputWriterClass) 
     throws IOException {
     InputWriter inputWriter =
-      ReflectionUtils.newInstance(inputWriterClass, job_);
+      ReflectionUtils.newInstance(inputWriterClass, job_); // 创建TextInputWriter对象
     inputWriter.initialize(this);
     return inputWriter;
   }

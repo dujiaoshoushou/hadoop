@@ -36,7 +36,7 @@ public class TextInputWriter extends InputWriter<Object, Object> {
   @Override
   public void initialize(PipeMapRed pipeMapRed) throws IOException {
     super.initialize(pipeMapRed);
-    clientOut = pipeMapRed.getClientOutput();
+    clientOut = pipeMapRed.getClientOutput(); // 获取外挂进程的标准输出通道
     inputSeparator = pipeMapRed.getInputSeparator();
   }
   

@@ -36,15 +36,15 @@ public class HadoopStreaming {
     int returnStatus = 0;
     String cmd = args[0];
     String[] remainingArgs = Arrays.copyOfRange(args, 1, args.length);
-    if (cmd.equalsIgnoreCase("dumptb")) {
+    if (cmd.equalsIgnoreCase("dumptb")) { // 第一个命令行参数"dumptb"
       DumpTypedBytes dumptb = new DumpTypedBytes();
       returnStatus = ToolRunner.run(dumptb, remainingArgs);
-    } else if (cmd.equalsIgnoreCase("loadtb")) {
+    } else if (cmd.equalsIgnoreCase("loadtb")) { // 第一个命令行参数"loadtb"
       LoadTypedBytes loadtb = new LoadTypedBytes();
       returnStatus = ToolRunner.run(loadtb, remainingArgs);
-    } else if (cmd.equalsIgnoreCase("streamjob")) {
+    } else if (cmd.equalsIgnoreCase("streamjob")) { // 第一个命令参数"streamjob"
       StreamJob job = new StreamJob();
-      returnStatus = ToolRunner.run(job, remainingArgs);
+      returnStatus = ToolRunner.run(job, remainingArgs); // 运行中会调用job.run，即streamJob.run
     } else { // for backward compatibility
       StreamJob job = new StreamJob();
       returnStatus = ToolRunner.run(job, args);

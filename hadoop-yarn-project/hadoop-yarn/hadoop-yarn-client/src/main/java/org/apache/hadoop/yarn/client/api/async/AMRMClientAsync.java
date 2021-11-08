@@ -130,7 +130,7 @@ extends AbstractService {
   public static <T extends ContainerRequest> AMRMClientAsync<T>
       createAMRMClientAsync(
       int intervalMs, AbstractCallbackHandler callbackHandler) {
-    return new AMRMClientAsyncImpl<T>(intervalMs, callbackHandler);
+    return new AMRMClientAsyncImpl<T>(intervalMs, callbackHandler); // 创建AMRMClientAsyncImpl对象，这是一种Service
   }
 
   /**

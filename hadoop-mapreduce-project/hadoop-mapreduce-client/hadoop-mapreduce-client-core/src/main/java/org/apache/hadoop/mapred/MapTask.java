@@ -443,32 +443,37 @@ public class MapTask extends Task {
                     ) throws IOException, InterruptedException,
                              ClassNotFoundException {
     InputSplit inputSplit = getSplitDetails(new Path(splitIndex.getSplitLocation()),
-           splitIndex.getStartOffset());
+           splitIndex.getStartOffset()); // 获取关系本任务输入split的信息，包括文件路径和起点
 
-    updateJobWithSplit(job, inputSplit);
-    reporter.setInputSplit(inputSplit);
-
+    updateJobWithSplit(job, inputSplit); // 设置inputSplit
+    reporter.setInputSplit(inputSplit); // reporter应报告这个Split的进度
+    /**
+     * 从数据源读入时如遇错误是否跳过错误继续往下进行
+     */
     RecordReader<INKEY,INVALUE> in = isSkipping() ? 
         new SkippingRecordReader<INKEY,INVALUE>(umbilical, reporter, job) :
           new TrackedRecordReader<INKEY,INVALUE>(reporter, job);
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
-
-
-    int numReduceTasks = conf.getNumReduceTasks();
+    int numReduceTasks = conf.getNumReduceTasks(); // 从JobConf中获取Reducer数量
     LOG.info("numReduceTasks: " + numReduceTasks);
     MapOutputCollector<OUTKEY, OUTVALUE> collector = null;
-    if (numReduceTasks > 0) {
+    if (numReduceTasks > 0) { // 有Reducer，Mapper的输出应该收集后供Reducer使用
       collector = createSortingCollector(job, reporter);
-    } else { 
+    } else { // 没有Reducer，Mapper的输出直接就是结果
       collector = new DirectMapOutputCollector<OUTKEY, OUTVALUE>();
        MapOutputCollector.Context context =
                            new MapOutputCollector.Context(this, job, reporter);
       collector.init(context);
     }
+    /**
+     * 从JobConf中获取MapRunnable的类型并加以创建，这次是PipeMapRunner
+     * 创建PipeMapRunner对象时会调用其configure()函数
+     */
     MapRunnable<INKEY,INVALUE,OUTKEY,OUTVALUE> runner =
       ReflectionUtils.newInstance(job.getMapRunnerClass(), job);
 
     try {
+      // 执行PipeMapRunner.run()
       runner.run(in, new OldOutputCollector(collector, conf), reporter);
       mapPhase.complete();
       // start the sort phase only if there are reducers

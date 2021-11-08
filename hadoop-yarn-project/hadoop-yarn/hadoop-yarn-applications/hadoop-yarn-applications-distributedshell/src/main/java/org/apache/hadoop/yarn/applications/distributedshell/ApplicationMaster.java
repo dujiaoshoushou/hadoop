@@ -220,7 +220,7 @@ public class ApplicationMaster {
 
   // Handle to communicate with the Resource Manager
   @SuppressWarnings("rawtypes")
-  private AMRMClientAsync amRMClient;
+  private AMRMClientAsync amRMClient; // 实际上是AMRClientAsyncImpl，与RM交互
 
   // In both secure and non-secure modes, this points to the job-submitter.
   @VisibleForTesting
@@ -229,7 +229,7 @@ public class ApplicationMaster {
   private Path homeDirectory;
 
   // Handle to communicate with the Node Manager
-  private NMClientAsync nmClientAsync;
+  private NMClientAsync nmClientAsync; // 实际上是NMClientAsyncImpl，与NM交互
   // Listen to process the response from the Node Manager
   private NMCallbackHandler containerListener;
 
@@ -835,12 +835,12 @@ public class ApplicationMaster {
 
     AMRMClientAsync.AbstractCallbackHandler allocListener =
         new RMCallbackHandler();
-    amRMClient = AMRMClientAsync.createAMRMClientAsync(1000, allocListener);
+    amRMClient = AMRMClientAsync.createAMRMClientAsync(1000, allocListener); // 建立对RM进行RPC的客户端和proxy
     amRMClient.init(conf);
     amRMClient.start();
 
     containerListener = createNMCallbackHandler();
-    nmClientAsync = new NMClientAsyncImpl(containerListener);
+    nmClientAsync = new NMClientAsyncImpl(containerListener); // 创建NMClientAsyncImpl，也是一种Service
     nmClientAsync.init(conf);
     nmClientAsync.start();
 
@@ -880,7 +880,7 @@ public class ApplicationMaster {
 
     RegisterApplicationMasterResponse response = amRMClient
         .registerApplicationMaster(appMasterHostname, appMasterRpcPort,
-            appMasterTrackingUrl, placementConstraintMap);
+            appMasterTrackingUrl, placementConstraintMap); // 向RM节点上的ApplicationMasterService登记
     resourceProfiles = response.getResourceProfiles();
     ResourceUtils.reinitializeResources(response.getResourceTypes());
     // Dump out information about cluster capability as seen by the
@@ -1071,6 +1071,7 @@ public class ApplicationMaster {
   @VisibleForTesting
   class RMCallbackHandler extends AMRMClientAsync.AbstractCallbackHandler {
     @SuppressWarnings("unchecked")
+    // 负责处理RM节点发回的响应
     @Override
     public void onContainersCompleted(List<ContainerStatus> completedContainers) {
       LOG.info("Got response from RM for container ask, completedCnt="
@@ -1283,7 +1284,7 @@ public class ApplicationMaster {
   }
 
   @VisibleForTesting
-  class NMCallbackHandler extends NMClientAsync.AbstractCallbackHandler {
+  class NMCallbackHandler extends NMClientAsync.AbstractCallbackHandler { // 负责来自NM节点的事件报告
 
     private ConcurrentMap<ContainerId, Container> containers =
         new ConcurrentHashMap<ContainerId, Container>();
@@ -1402,7 +1403,7 @@ public class ApplicationMaster {
    * Thread to connect to the {@link ContainerManagementProtocol} and launch the container
    * that will execute the shell command.
    */
-  private class LaunchContainerRunnable implements Runnable {
+  private class LaunchContainerRunnable implements Runnable { // 负责容器投运
 
     // Allocated container
     private Container container;

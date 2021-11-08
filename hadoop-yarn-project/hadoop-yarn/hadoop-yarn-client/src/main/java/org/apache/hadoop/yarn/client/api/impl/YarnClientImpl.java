@@ -288,11 +288,11 @@ public class YarnClientImpl extends YarnClient {
   public YarnClientApplication createApplication()
       throws YarnException, IOException {
     ApplicationSubmissionContext context = Records.newRecord
-        (ApplicationSubmissionContext.class);
-    GetNewApplicationResponse newApp = getNewApplication();
-    ApplicationId appId = newApp.getApplicationId();
-    context.setApplicationId(appId);
-    return new YarnClientApplication(newApp, context);
+        (ApplicationSubmissionContext.class); // 创建一个ApplicationSubmissionContext，即ASC
+    GetNewApplicationResponse newApp = getNewApplication(); // 向RM发送请求并等待回应
+    ApplicationId appId = newApp.getApplicationId(); // RM的回应中包含ApplicationId
+    context.setApplicationId(appId); // 将ApplicationId设置在ASC中
+    return new YarnClientApplication(newApp, context); // 返回据此而创建的YarnClientApplication对象
   }
 
   @Override

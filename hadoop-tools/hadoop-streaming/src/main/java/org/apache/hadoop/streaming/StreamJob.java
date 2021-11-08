@@ -125,7 +125,7 @@ public class StreamJob implements Tool {
       }
       postProcessArgs();
 
-      setJobConf();
+      setJobConf(); // 设置好所用的Mapper和Reducer等
     } catch (IllegalArgumentException ex) {
       //ignore, since log will already be printed
       // print the log in debug mode.
@@ -272,17 +272,17 @@ public class StreamJob implements Tool {
       background_ =  cmdLine.hasOption("background");
       debug_ = cmdLine.hasOption("debug")? debug_ + 1 : debug_;
 
-      String[] values = cmdLine.getOptionValues("input");
+      String[] values = cmdLine.getOptionValues("input"); // 输入目录或文件路径
       if (values != null && values.length > 0) {
         for (String input : values) {
           inputSpecs_.add(input);
         }
       }
-      output_ =  cmdLine.getOptionValue("output");
+      output_ =  cmdLine.getOptionValue("output"); // 输出目录
 
-      mapCmd_ = cmdLine.getOptionValue("mapper");
-      comCmd_ = cmdLine.getOptionValue("combiner");
-      redCmd_ = cmdLine.getOptionValue("reducer");
+      mapCmd_ = cmdLine.getOptionValue("mapper"); // 用作Mapper的Utility
+      comCmd_ = cmdLine.getOptionValue("combiner"); //  用作combiner的Utility
+      redCmd_ = cmdLine.getOptionValue("reducer");//  用作reducer的Utility
 
       lazyOutput_ = cmdLine.hasOption("lazyOutput");
 
@@ -318,7 +318,7 @@ public class StreamJob implements Tool {
         config_.set("tmpfiles", tmpFiles);
       }
 
-      String fsName = cmdLine.getOptionValue("dfs");
+      String fsName = cmdLine.getOptionValue("dfs"); // 文件系统为HDFS
       if (null != fsName){
         LOG.warn("-dfs option is deprecated, please use -fs instead.");
         config_.set("fs.default.name", fsName);
@@ -823,24 +823,24 @@ public class StreamJob implements Tool {
 
     boolean isMapperACommand = false;
     if (mapCmd_ != null) {
-      c = StreamUtil.goodClassOrNull(jobConf_, mapCmd_, defaultPackage);
+      c = StreamUtil.goodClassOrNull(jobConf_, mapCmd_, defaultPackage); // 检查是否为Java类
       if (c != null) {
-        jobConf_.setMapperClass(c);
-      } else {
-        isMapperACommand = true;
-        jobConf_.setMapperClass(PipeMapper.class);
-        jobConf_.setMapRunnerClass(PipeMapRunner.class);
+        jobConf_.setMapperClass(c); // mapper是一个Java类
+      } else { // mapper并非Java类
+        isMapperACommand = true; // mapper是一个shell命令（utility）
+        jobConf_.setMapperClass(PipeMapper.class); // 需要借用Java类PipeMapper
+        jobConf_.setMapRunnerClass(PipeMapRunner.class); // 以及Java类PipeMapRunner
         jobConf_.set("stream.map.streamprocessor",
                      URLEncoder.encode(mapCmd_, "UTF-8"));
       }
     }
 
     if (comCmd_ != null) {
-      c = StreamUtil.goodClassOrNull(jobConf_, comCmd_, defaultPackage);
+      c = StreamUtil.goodClassOrNull(jobConf_, comCmd_, defaultPackage); // 检查是否为Java类
       if (c != null) {
-        jobConf_.setCombinerClass(c);
+        jobConf_.setCombinerClass(c); // combiner是一个java类
       } else {
-        jobConf_.setCombinerClass(PipeCombiner.class);
+        jobConf_.setCombinerClass(PipeCombiner.class); // combiner是一个shell命令（utility）
         jobConf_.set("stream.combine.streamprocessor", URLEncoder.encode(
                 comCmd_, "UTF-8"));
       }
@@ -852,22 +852,22 @@ public class StreamJob implements Tool {
     }
 
     boolean isReducerACommand = false;
-    if (redCmd_ != null) {
+    if (redCmd_ != null) { // 命令行中指定了reducer
       if (redCmd_.equals(REDUCE_NONE)) {
         jobConf_.setNumReduceTasks(0);
       }
       if (jobConf_.getNumReduceTasks() != 0) {
-        if (redCmd_.compareToIgnoreCase("aggregate") == 0) {
+        if (redCmd_.compareToIgnoreCase("aggregate") == 0) { // 并且是java类aggregate
           jobConf_.setReducerClass(ValueAggregatorReducer.class);
           jobConf_.setCombinerClass(ValueAggregatorCombiner.class);
         } else {
 
-          c = StreamUtil.goodClassOrNull(jobConf_, redCmd_, defaultPackage);
+          c = StreamUtil.goodClassOrNull(jobConf_, redCmd_, defaultPackage); // 检查是否为Java类
           if (c != null) {
-            jobConf_.setReducerClass(c);
-          } else {
-            isReducerACommand = true;
-            jobConf_.setReducerClass(PipeReducer.class);
+            jobConf_.setReducerClass(c); // reducer是一个java类
+          } else { // reducer并非Java类
+            isReducerACommand = true; // reducer是一个shell命令（utility)
+            jobConf_.setReducerClass(PipeReducer.class); // 需要借用Java类PipeReducer
             jobConf_.set("stream.reduce.streamprocessor", URLEncoder.encode(
                 redCmd_, "UTF-8"));
           }

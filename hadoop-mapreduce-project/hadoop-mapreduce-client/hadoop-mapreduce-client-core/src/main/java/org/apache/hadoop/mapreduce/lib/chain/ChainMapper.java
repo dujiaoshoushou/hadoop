@@ -120,9 +120,9 @@ public class ChainMapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> extends
       Class<?> inputKeyClass, Class<?> inputValueClass,
       Class<?> outputKeyClass, Class<?> outputValueClass,
       Configuration mapperConf) throws IOException {
-    job.setMapperClass(ChainMapper.class);
-    job.setMapOutputKeyClass(outputKeyClass);
-    job.setMapOutputValueClass(outputValueClass);
+    job.setMapperClass(ChainMapper.class); // 就作业而言，所用的Mapper是ChainMapper
+    job.setMapOutputKeyClass(outputKeyClass); // 作为整个Mapper的K输出类型
+    job.setMapOutputValueClass(outputValueClass); // 作为整个Mapper的V输出类型
     Chain.addMapper(true, job, klass, inputKeyClass, inputValueClass,
         outputKeyClass, outputValueClass, mapperConf);
   }
@@ -130,15 +130,15 @@ public class ChainMapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> extends
   private Chain chain;
 
   protected void setup(Context context) {
-    chain = new Chain(true);
-    chain.setup(context.getConfiguration());
+    chain = new Chain(true); // 创建Chain对象
+    chain.setup(context.getConfiguration()); // 根据JobConf中的内容依次创建链中的各个Mapper对象
   }
 
   public void run(Context context) throws IOException, InterruptedException {
 
     setup(context);
 
-    int numMappers = chain.getAllMappers().size();
+    int numMappers = chain.getAllMappers().size(); // 链中共有几个Mapper
     if (numMappers == 0) {
       return;
     }
@@ -146,19 +146,19 @@ public class ChainMapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> extends
     ChainBlockingQueue<Chain.KeyValuePair<?, ?>> inputqueue;
     ChainBlockingQueue<Chain.KeyValuePair<?, ?>> outputqueue;
     if (numMappers == 1) {
-      chain.runMapper(context, 0);
-    } else {
+      chain.runMapper(context, 0); // 只有一个实际的mapper，那么就运行这个Mapper
+    } else { // 是多个mapper的链
       // add all the mappers with proper context
       // add first mapper
-      outputqueue = chain.createBlockingQueue();
-      chain.addMapper(context, outputqueue, 0);
+      outputqueue = chain.createBlockingQueue(); // 创建一个Mapper的输出队列
+      chain.addMapper(context, outputqueue, 0); // 将第一个mapper加入mapper链
       // add other mappers
       for (int i = 1; i < numMappers - 1; i++) {
-        inputqueue = outputqueue;
-        outputqueue = chain.createBlockingQueue();
-        chain.addMapper(inputqueue, outputqueue, context, i);
+        inputqueue = outputqueue; // 前一个mapper的输出队列就是后一个mapper的输入队列
+        outputqueue = chain.createBlockingQueue(); // 再创建后一个Mapper的输出队列
+        chain.addMapper(inputqueue, outputqueue, context, i); // 将后一个mapper加入mapper链
       }
-      // add last mapper
+      // add last mapper 将最后一个Mapper加入Mapper链，这个mapper无须输出队列
       chain.addMapper(outputqueue, context, numMappers - 1);
     }
     

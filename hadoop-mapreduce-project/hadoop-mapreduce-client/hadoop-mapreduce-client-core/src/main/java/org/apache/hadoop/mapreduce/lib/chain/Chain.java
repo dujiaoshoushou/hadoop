@@ -439,18 +439,21 @@ public class Chain {
       ChainBlockingQueue<KeyValuePair<?, ?>> output,
       TaskInputOutputContext context, int index) throws IOException,
       InterruptedException {
-    Configuration conf = getConf(index);
+    Configuration conf = getConf(index); // 将第一mapper加入Mapper链
     Class<?> keyClass = conf.getClass(MAPPER_INPUT_KEY_CLASS, Object.class);
     Class<?> valueClass = conf.getClass(MAPPER_INPUT_VALUE_CLASS, Object.class);
     Class<?> keyOutClass = conf.getClass(MAPPER_OUTPUT_KEY_CLASS, Object.class);
     Class<?> valueOutClass = conf.getClass(MAPPER_OUTPUT_VALUE_CLASS,
         Object.class);
+    // 创建第一个mapper的RecordReader，取决于inputContext中的设置
     RecordReader rr = new ChainRecordReader(keyClass, valueClass, input, conf);
+    // 创建第一个mapper的RecordWriter，通往其输出队列output
     RecordWriter rw = new ChainRecordWriter(keyOutClass, valueOutClass, output,
         conf);
+    // 创建这个第一个mapper的MapRunner线程
     MapRunner runner = new MapRunner(mappers.get(index), createMapContext(rr,
         rw, context, getConf(index)), rr, rw);
-    threads.add(runner);
+    threads.add(runner); // 将这个线程加入这个Chain的线程集合threads
   }
 
   /**
@@ -635,13 +638,14 @@ public class Chain {
     // if a reducer chain check the Reducer has been already set
     checkReducerAlreadySet(isMap, jobConf, prefix, true);
 
-    // set the mapper class
+    // set the mapper class，是Mapper链中的第几个Mapper
     int index = getIndex(jobConf, prefix);
+    // 把Mapper链中的第几个Mapper设置成给定的类，例如AMap
     jobConf.setClass(prefix + CHAIN_MAPPER_CLASS + index, klass, Mapper.class);
-
+    // 检查这个Mapper的输入类型与前一个Mapper的输出是否匹配
     validateKeyValueTypes(isMap, jobConf, inputKeyClass, inputValueClass,
         outputKeyClass, outputValueClass, index, prefix);
-
+    // 将给定的mapperConf设置成这个Mapper的conf
     setMapperConf(isMap, jobConf, inputKeyClass, inputValueClass,
         outputKeyClass, outputValueClass, mapperConf, index, prefix);
   }
@@ -825,8 +829,8 @@ public class Chain {
       Configuration mConf = getChainElementConf(jobConf, prefix
           + CHAIN_MAPPER_CONFIG + i);
       confList.add(mConf);
-      Mapper mapper = ReflectionUtils.newInstance(klass, mConf);
-      mappers.add(mapper);
+      Mapper mapper = ReflectionUtils.newInstance(klass, mConf); // 创建实际的Mapper对象，例如：AMap、BMap
+      mappers.add(mapper); // 将创建的Mapper对象加入mappers序列
 
     }
 
@@ -834,7 +838,7 @@ public class Chain {
         + CHAIN_REDUCER_CLASS, null, Reducer.class);
     if (klass != null) {
       rConf = getChainElementConf(jobConf, prefix + CHAIN_REDUCER_CONFIG);
-      reducer = ReflectionUtils.newInstance(klass, rConf);
+      reducer = ReflectionUtils.newInstance(klass, rConf); // 如果设定了Reducer则创建对象
     }
   }
 

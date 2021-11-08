@@ -147,6 +147,10 @@ public class PipeMapper extends PipeMapRed implements Mapper {
 
   @Override
   InputWriter createInputWriter() throws IOException {
+    /**
+     * 外挂进程的标准输入通道
+     * PipeMapRed.createInputWriter(mapInputWriterClass_)
+     */
     return super.createInputWriter(mapInputWriterClass_);
   }
 
