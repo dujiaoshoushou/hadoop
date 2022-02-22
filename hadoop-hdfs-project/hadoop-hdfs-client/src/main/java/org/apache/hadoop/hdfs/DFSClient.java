@@ -889,7 +889,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       String src, long start, long length)
       throws IOException {
     try {
-      return namenode.getBlockLocations(src, start, length);
+      return namenode.getBlockLocations(src, start, length); // 对NameNode的RPC调用
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
           FileNotFoundException.class,
@@ -1032,10 +1032,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public DFSInputStream open(String src, int buffersize, boolean verifyChecksum)
       throws IOException {
-    checkOpen();
+    checkOpen(); // 检查文件系统是否在运行
     //    Get block info from namenode
     try (TraceScope ignored = newPathTraceScope("newDFSInputStream", src)) {
-      LocatedBlocks locatedBlocks = getLocatedBlocks(src, 0);
+      LocatedBlocks locatedBlocks = getLocatedBlocks(src, 0); // 从namenode定位块
       return openInternal(locatedBlocks, src, verifyChecksum);
     }
   }
@@ -1073,7 +1073,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         return new DFSStripedInputStream(this, src, verifyChecksum, ecPolicy,
             locatedBlocks);
       }
-      return new DFSInputStream(this, src, verifyChecksum, locatedBlocks);
+      return new DFSInputStream(this, src, verifyChecksum, locatedBlocks); // DFSInputStream对象的构造方法
     } else {
       throw new IOException("Cannot open filename " + src);
     }

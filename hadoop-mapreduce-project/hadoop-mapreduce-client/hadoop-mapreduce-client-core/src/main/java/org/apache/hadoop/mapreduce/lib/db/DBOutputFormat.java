@@ -176,23 +176,23 @@ extends OutputFormat<K,V> {
   public RecordWriter<K, V> getRecordWriter(TaskAttemptContext context) 
       throws IOException {
     DBConfiguration dbConf = new DBConfiguration(context.getConfiguration());
-    String tableName = dbConf.getOutputTableName();
-    String[] fieldNames = dbConf.getOutputFieldNames();
+    String tableName = dbConf.getOutputTableName(); // 数据库中表的名称
+    String[] fieldNames = dbConf.getOutputFieldNames(); // 有关字段的名称
     
     if(fieldNames == null) {
       fieldNames = new String[dbConf.getOutputFieldCount()];
     }
     
     try {
-      Connection connection = dbConf.getConnection();
+      Connection connection = dbConf.getConnection(); // 建立数据库连接
       PreparedStatement statement = null;
 
       DatabaseMetaData dbMeta = connection.getMetaData();
       this.dbProductName = dbMeta.getDatabaseProductName().toUpperCase();
 
       statement = connection.prepareStatement(
-                    constructQuery(tableName, fieldNames));
-      return new DBRecordWriter(connection, statement);
+                    constructQuery(tableName, fieldNames)); // 构建用于SQL语句的字符串
+      return new DBRecordWriter(connection, statement); // 创建DBRecordWriter，返回后进一步包装成NewTrackingRecordWriter,就是前面的trackedRW
     } catch (Exception ex) {
       throw new IOException(ex.getMessage());
     }

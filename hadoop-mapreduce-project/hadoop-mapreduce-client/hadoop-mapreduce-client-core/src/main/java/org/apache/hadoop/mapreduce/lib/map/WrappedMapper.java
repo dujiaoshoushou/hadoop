@@ -56,7 +56,7 @@ public class WrappedMapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT>
    */
   public Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT>.Context
   getMapContext(MapContext<KEYIN, VALUEIN, KEYOUT, VALUEOUT> mapContext) {
-    return new Context(mapContext); // WrappedMapper.Context
+    return new Context(mapContext); // WrappedMapper.Context,这是定义WrapperMapper内部的Context
   }
   
   @InterfaceStability.Evolving
@@ -66,7 +66,7 @@ public class WrappedMapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT>
     protected MapContext<KEYIN, VALUEIN, KEYOUT, VALUEOUT> mapContext;
 
     public Context(MapContext<KEYIN, VALUEIN, KEYOUT, VALUEOUT> mapContext) {
-      this.mapContext = mapContext;
+      this.mapContext = mapContext; // 所以WrappedMapper.Context.mapContext是个MapContextImpl
     }
 
     /**

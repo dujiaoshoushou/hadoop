@@ -181,7 +181,7 @@ public class DistributedFileSystem extends FileSystem
       throw new IOException("Incomplete HDFS URI, no host: "+ uri);
     }
 
-    this.dfs = new DFSClient(uri, conf, statistics);
+    this.dfs = new DFSClient(uri, conf, statistics); // 创建DFSClient对象
     this.uri = URI.create(uri.getScheme()+"://"+uri.getAuthority());
     this.workingDir = getHomeDirectory();
 
@@ -326,13 +326,13 @@ public class DistributedFileSystem extends FileSystem
     statistics.incrementReadOps(1);
     storageStatistics.incrementOpCounter(OpType.OPEN);
     Path absF = fixRelativePart(f);
-    return new FileSystemLinkResolver<FSDataInputStream>() {
+    return new FileSystemLinkResolver<FSDataInputStream>() { // 创建此类对象
       @Override
       public FSDataInputStream doCall(final Path p) throws IOException {
-        final DFSInputStream dfsis =
-            dfs.open(getPathName(p), bufferSize, verifyChecksum);
+        final DFSInputStream dfsis =                               // 在此过程中可能会有多种异常，下面捕捉的是因符号连接解析失败而致的异常
+            dfs.open(getPathName(p), bufferSize, verifyChecksum); // dfs是在DistributedFileSystem初始化时创建的DFSClient类对象，
         try {
-          return dfs.createWrappedInputStream(dfsis);
+          return dfs.createWrappedInputStream(dfsis); // 返回一个FSDataInputStream
         } catch (IOException ex){
           dfsis.close();
           throw ex;
@@ -341,7 +341,7 @@ public class DistributedFileSystem extends FileSystem
       @Override
       public FSDataInputStream next(final FileSystem fs, final Path p)
           throws IOException {
-        return fs.open(p, bufferSize);
+        return fs.open(p, bufferSize); //
       }
     }.resolve(this, absF);
   }

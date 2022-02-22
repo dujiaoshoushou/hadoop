@@ -253,14 +253,14 @@ public class DFSInputStream extends FSInputStream
         // restarts, DNs may not report immediately. At this time partial block
         // locations will not be available with NN for getting the length. Lets
         // retry for 3 times to get the length.
-        if (lastBlockBeingWrittenLength == -1) {
+        if (lastBlockBeingWrittenLength == -1) { // 如果上一次的尝试失败
           DFSClient.LOG.warn("Last block locations not available. "
               + "Datanodes might not have reported blocks completely."
               + " Will retry for " + retriesForLastBlockLength + " times");
-          waitFor(conf.getRetryIntervalForGetLastBlockLength());
+          waitFor(conf.getRetryIntervalForGetLastBlockLength()); // 过会儿再试
           lastBlockBeingWrittenLength =
               fetchLocatedBlocksAndGetLastBlockLength(true);
-        } else {
+        } else { // 如果lastBlockBeingWrittenLength>=0 就跳出循环
           break;
         }
         retriesForLastBlockLength--;
@@ -328,14 +328,14 @@ public class DFSInputStream extends FSInputStream
       throws IOException {
     LocatedBlocks newInfo = locatedBlocks;
     if (locatedBlocks == null || refresh) {
-      newInfo = dfsClient.getLocatedBlocks(src, 0);
+      newInfo = dfsClient.getLocatedBlocks(src, 0); // 从offset=0开始
     }
     DFSClient.LOG.debug("newInfo = {}", newInfo);
     if (newInfo == null) {
-      throw new IOException("Cannot open filename " + src);
+      throw new IOException("Cannot open filename " + src); // 失败
     }
 
-    if (locatedBlocks != null) {
+    if (locatedBlocks != null) { // 如果以前就有这个信息在本地，就新老比较：
       Iterator<LocatedBlock> oldIter =
           locatedBlocks.getLocatedBlocks().iterator();
       Iterator<LocatedBlock> newIter = newInfo.getLocatedBlocks().iterator();

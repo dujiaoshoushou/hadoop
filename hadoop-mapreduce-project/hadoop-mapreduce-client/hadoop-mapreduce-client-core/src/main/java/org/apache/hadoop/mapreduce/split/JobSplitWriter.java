@@ -77,7 +77,7 @@ public class JobSplitWriter {
   throws IOException, InterruptedException {
     FSDataOutputStream out = createFile(fs, 
         JobSubmissionFiles.getJobSplitFile(jobSubmitDir), conf); // 路径名为"~/job.split",创建输入片（Split)文件，并为其创建一个输出流
-    SplitMetaInfo[] info = writeNewSplits(conf, splits, out);//将分片信息写入Split文件
+    SplitMetaInfo[] info = writeNewSplits(conf, splits, out);//将分片信息写入Split文件，这里的splits就是上面的array
     out.close();
     writeJobSplitMetaInfo(fs,JobSubmissionFiles.getJobSplitMetaFile(jobSubmitDir), 
         new FsPermission(JobSubmissionFiles.JOB_FILE_PERMISSION), splitVersion,
@@ -186,12 +186,12 @@ public class JobSplitWriter {
   throws IOException {
     // write the splits meta-info to a file for the job tracker
     FSDataOutputStream out = 
-      FileSystem.create(fs, filename, p);
-    out.write(JobSplit.META_SPLIT_FILE_HEADER);
+      FileSystem.create(fs, filename, p); // 创建文件
+    out.write(JobSplit.META_SPLIT_FILE_HEADER); // 前面是文件头
     WritableUtils.writeVInt(out, splitMetaInfoVersion);
     WritableUtils.writeVInt(out, allSplitMetaInfo.length);
     for (JobSplit.SplitMetaInfo splitMetaInfo : allSplitMetaInfo) {
-      splitMetaInfo.write(out);
+      splitMetaInfo.write(out); // == JobSplit.SplitMetaInfo.write(out)
     }
     out.close();
   }

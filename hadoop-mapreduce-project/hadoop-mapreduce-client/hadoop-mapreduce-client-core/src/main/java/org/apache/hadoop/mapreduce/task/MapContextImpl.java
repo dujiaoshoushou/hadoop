@@ -77,7 +77,7 @@ public class MapContextImpl<KEYIN,VALUEIN,KEYOUT,VALUEOUT>
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
-    return reader.nextKeyValue();
+    return reader.nextKeyValue(); // NewTrackingRecordReader.nextKeyValue()
   }
 
 }

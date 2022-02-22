@@ -78,7 +78,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     while (maps.size() > 0) {
       try {
-        // If merge is on, block
+        // If merge is on, block 如有merge正在进行就等待其结束
         merger.waitForResource();
         metrics.threadBusy();
 

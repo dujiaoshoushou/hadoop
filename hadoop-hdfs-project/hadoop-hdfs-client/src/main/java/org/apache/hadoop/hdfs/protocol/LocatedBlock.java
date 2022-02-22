@@ -69,11 +69,11 @@ public class LocatedBlock {
 
   private final ExtendedBlock b;
   private long offset;  // offset of the first byte of the block in the file
-  private final DatanodeInfoWithStorage[] locs;
+  private final DatanodeInfoWithStorage[] locs; // 这个数据块的各个复份存放的地点
   /** Cached storage ID for each replica */
-  private final String[] storageIDs;
+  private final String[] storageIDs; // 这个数据块的各个复份所在的存储设备ID
   /** Cached storage type for each replica, if reported. */
-  private final StorageType[] storageTypes;
+  private final StorageType[] storageTypes; // 这个数据块的各个复份的存储类型，如RAMDISK
   // corrupt flag is true if all of the replicas of a block are corrupt.
   // else false. If block has few corrupt replicas, they are filtered and
   // their locations are not part of this object
@@ -86,7 +86,7 @@ public class LocatedBlock {
   /**
    * List of cached datanode locations
    */
-  private DatanodeInfo[] cachedLocs;
+  private DatanodeInfo[] cachedLocs; // 在哪几个节点上有缓存
 
   // Used when there are no locations
   static final DatanodeInfoWithStorage[] EMPTY_LOCS =

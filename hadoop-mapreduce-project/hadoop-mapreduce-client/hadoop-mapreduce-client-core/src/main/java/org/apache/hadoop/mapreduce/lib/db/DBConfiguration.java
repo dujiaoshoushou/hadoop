@@ -149,12 +149,13 @@ public class DBConfiguration {
 
     if(conf.get(DBConfiguration.USERNAME_PROPERTY) == null) {
       return DriverManager.getConnection(
-               conf.get(DBConfiguration.URL_PROPERTY));
+               conf.get(DBConfiguration.URL_PROPERTY)); // 数据库的URL
     } else {
+      // 建立跟数据库Server的连接
       return DriverManager.getConnection(
-          conf.get(DBConfiguration.URL_PROPERTY), 
-          conf.get(DBConfiguration.USERNAME_PROPERTY), 
-          conf.get(DBConfiguration.PASSWORD_PROPERTY));
+          conf.get(DBConfiguration.URL_PROPERTY),  // 数据库的URL
+          conf.get(DBConfiguration.USERNAME_PROPERTY),  // 登录用户名
+          conf.get(DBConfiguration.PASSWORD_PROPERTY)); // 口令
     }
   }
 

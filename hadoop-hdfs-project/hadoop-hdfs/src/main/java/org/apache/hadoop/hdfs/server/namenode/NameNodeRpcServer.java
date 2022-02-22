@@ -767,7 +767,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     checkNNStartup();
     metrics.incrGetBlockLocations();
     LocatedBlocks locatedBlocks =
-        namesystem.getBlockLocations(getClientMachine(), src, offset, length);
+        namesystem.getBlockLocations(getClientMachine(), src, offset, length); // offset 为0
     return locatedBlocks;
   }
   

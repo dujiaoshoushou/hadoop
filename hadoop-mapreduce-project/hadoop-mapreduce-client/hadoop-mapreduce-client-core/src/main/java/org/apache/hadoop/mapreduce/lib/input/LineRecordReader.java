@@ -197,7 +197,7 @@ public class LineRecordReader extends RecordReader<LongWritable, Text> {
       if (pos == 0) {
         newSize = skipUtfByteOrderMark();
       } else {
-        newSize = in.readLine(value, maxLineLength, maxBytesToConsume(pos));
+        newSize = in.readLine(value, maxLineLength, maxBytesToConsume(pos)); // SplitLineReader是对LineReader的扩充
         pos += newSize;
       }
 
@@ -212,9 +212,9 @@ public class LineRecordReader extends RecordReader<LongWritable, Text> {
     if (newSize == 0) {
       key = null;
       value = null;
-      return false;
+      return false; // 使mapper.run()中的while语句停止循环
     } else {
-      return true;
+      return true; // 使mapper.run()中的while语句继续循环
     }
   }
 

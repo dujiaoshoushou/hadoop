@@ -46,11 +46,11 @@ public class TextInputFormat extends FileInputFormat<LongWritable, Text> {
     createRecordReader(InputSplit split,
                        TaskAttemptContext context) {
     String delimiter = context.getConfiguration().get(
-        "textinputformat.record.delimiter");
+        "textinputformat.record.delimiter"); // 单词分隔符，例如空格和标点符号
     byte[] recordDelimiterBytes = null;
     if (null != delimiter)
       recordDelimiterBytes = delimiter.getBytes(Charsets.UTF_8);
-    return new LineRecordReader(recordDelimiterBytes);
+    return new LineRecordReader(recordDelimiterBytes); // TextInputFormat的RecordReader是LineRecordReader
   }
 
   @Override

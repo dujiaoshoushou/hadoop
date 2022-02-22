@@ -501,7 +501,7 @@ public abstract class FileSystem extends Configured
    * @throws IOException if the FileSystem cannot be instantiated.
    */
   public static FileSystem get(URI uri, Configuration conf) throws IOException {
-    String scheme = uri.getScheme();
+    String scheme = uri.getScheme(); // 例如：file:// 、http:// 、https://
     String authority = uri.getAuthority();
 
     if (scheme == null && authority == null) {     // use default FS
@@ -516,7 +516,7 @@ public abstract class FileSystem extends Configured
       }
     }
     String disableCacheName = String.format("fs.%s.impl.disable.cache", scheme);
-    if (conf.getBoolean(disableCacheName, false)) {
+    if (conf.getBoolean(disableCacheName, false)) { // 如果不启用缓存，就临时创建
       LOGGER.debug("Bypassing cache to create filesystem {}", uri);
       return createFileSystem(uri, conf);
     }
@@ -3411,7 +3411,7 @@ public abstract class FileSystem extends Configured
           getFileSystemClass(uri.getScheme(), conf);
       FileSystem fs = ReflectionUtils.newInstance(clazz, conf);
       try {
-        fs.initialize(uri, conf);
+        fs.initialize(uri, conf); //== DistributedFileSystem.initialize
       } catch (IOException | RuntimeException e) {
         // exception raised during initialization.
         // log summary at warn and full stack at debug

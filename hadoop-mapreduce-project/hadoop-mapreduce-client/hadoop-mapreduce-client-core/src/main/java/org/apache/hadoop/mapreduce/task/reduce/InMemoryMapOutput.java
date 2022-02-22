@@ -82,15 +82,15 @@ class InMemoryMapOutput<K, V> extends IFileWrappedMapOutput<K, V> {
     InputStream input = iFin;
 
     // Are map-outputs compressed?
-    if (codec != null) {
-      decompressor.reset();
-      input = codec.createInputStream(input, decompressor);
+    if (codec != null) { //如果有压缩，就要增加解压缩环境
+      decompressor.reset(); // 重启解压器模块
+      input = codec.createInputStream(input, decompressor); // 带上解压缩器的输入流
     }
   
     try {
-      IOUtils.readFully(input, memory, 0, memory.length);
+      IOUtils.readFully(input, memory, 0, memory.length); // 从Mapper方将特定Partition的数据读入Reducer方InMemoryMapOutput的缓冲区
       metrics.inputBytes(memory.length);
-      reporter.progress();
+      reporter.progress(); // 报告进度
       LOG.info("Read " + memory.length + " bytes from map-output for " +
                 getMapId());
 
@@ -106,7 +106,7 @@ class InMemoryMapOutput<K, V> extends IFileWrappedMapOutput<K, V> {
                                getMapId());
       }
     } finally {
-      CodecPool.returnDecompressor(decompressor);
+      CodecPool.returnDecompressor(decompressor); // 释放解压器
     }
   }
 

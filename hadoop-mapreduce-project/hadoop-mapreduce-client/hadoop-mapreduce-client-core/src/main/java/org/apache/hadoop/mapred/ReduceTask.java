@@ -383,10 +383,10 @@ public class ReduceTask extends Task {
                   reduceShuffleBytes, failedShuffleCounter,
                   mergedMapOutputsCounter,
                   taskStatus, copyPhase, sortPhase, this,
-                  mapOutputFile, localMapFiles);
-    shuffleConsumerPlugin.init(shuffleContext);
+                  mapOutputFile, localMapFiles); // 创建其Context对象：ShuffleConsumerPlugin.Context
+    shuffleConsumerPlugin.init(shuffleContext); // == Shuffle.init(shuffleContext)
 
-    rIter = shuffleConsumerPlugin.run(); // 将MapTask的输出复制过来，这里是重点 ==Shuffle.run，
+    rIter = shuffleConsumerPlugin.run(); // 将MapTask的输出复制过来，这里是重点 ==Shuffle.run，从各个Mapper复制其输出文件，并加以合并（排序），等待直至完成
 
     // free up the data structures
     mapOutputFilesOnDisk.clear();
@@ -551,7 +551,7 @@ public class ReduceTask extends Task {
 
       long bytesOutPrev = getOutputBytes(fsStats);
       this.real = (org.apache.hadoop.mapreduce.RecordWriter<K, V>) reduce.outputFormat
-          .getRecordWriter(taskContext);
+          .getRecordWriter(taskContext); // ==DBOutputFormat.getRecordWriter(taskContext)
       long bytesOutCurr = getOutputBytes(fsStats);
       fileOutputByteCounter.increment(bytesOutCurr - bytesOutPrev);
     }

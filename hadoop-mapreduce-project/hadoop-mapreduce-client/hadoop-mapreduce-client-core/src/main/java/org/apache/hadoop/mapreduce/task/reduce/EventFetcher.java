@@ -63,7 +63,7 @@ class EventFetcher<K,V> extends Thread {
     try {
       while (!stopped && !Thread.currentThread().isInterrupted()) {
         try {
-          int numNewMaps = getMapCompletionEvents();
+          int numNewMaps = getMapCompletionEvents(); // 获取有关Map完成的事件
           failures = 0;
           if (numNewMaps > 0) {
             LOG.info(reduce + ": " + "Got " + numNewMaps + " new map-outputs");
@@ -122,8 +122,8 @@ class EventFetcher<K,V> extends Thread {
               (org.apache.hadoop.mapred.JobID)reduce.getJobID(),
               fromEventIdx,
               maxEventsToFetch,
-              (org.apache.hadoop.mapred.TaskAttemptID)reduce);
-      events = update.getMapTaskCompletionEvents();
+              (org.apache.hadoop.mapred.TaskAttemptID)reduce); // 通过"脐带"从MRAppMaster获取有关Map完成的事件（报告）
+      events = update.getMapTaskCompletionEvents(); // 从中获取有关具体MapTask结束运行的情况
       LOG.debug("Got " + events.length + " map completion events from " +
                fromEventIdx);
 
@@ -138,7 +138,7 @@ class EventFetcher<K,V> extends Thread {
       //    fetching from those maps.
       // 3. Remove TIPFAILED maps from neededOutputs since we don't need their
       //    outputs at all.
-      for (TaskCompletionEvent event : events) {
+      for (TaskCompletionEvent event : events) { // 对于所获取的每个事件报告：
         scheduler.resolve(event);
         if (TaskCompletionEvent.Status.SUCCEEDED == event.getTaskStatus()) {
           ++numNewMaps;

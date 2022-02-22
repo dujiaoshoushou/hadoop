@@ -1004,7 +1004,7 @@ public class ShuffleHandler extends AuxiliaryService {
 
       Map<String, MapOutputInfo> mapOutputInfoMap =
           new HashMap<String, MapOutputInfo>();
-      Channel ch = evt.getChannel();
+      Channel ch = evt.getChannel(); // MessageEvent中有通往客户端的连接和通道
       ChannelPipeline pipeline = ch.getPipeline();
       TimeoutHandler timeoutHandler =
           (TimeoutHandler)pipeline.get(TIMEOUT_HANDLER);
@@ -1144,8 +1144,8 @@ public class ShuffleHandler extends AuxiliaryService {
         throws IOException {
 
       long contentLength = 0;
-      for (String mapId : mapIds) {
-        MapOutputInfo outputInfo = getMapOutputInfo(mapId, reduce, jobId, user);
+      for (String mapId : mapIds) { // 同一节点上也有可能有多个MapTask存在
+        MapOutputInfo outputInfo = getMapOutputInfo(mapId, reduce, jobId, user); // 从mapOutputInfoMap中找到目标Mapper的输出信息MapOutputInfo
         if (mapOutputInfoMap.size() < mapOutputMetaInfoCacheSize) {
           mapOutputInfoMap.put(mapId, outputInfo);
         }

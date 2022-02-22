@@ -33,11 +33,11 @@ abstract class MergeThread<T,K,V> extends Thread {
   private static final Logger LOG = LoggerFactory.getLogger(MergeThread.class);
 
   private AtomicInteger numPending = new AtomicInteger(0);
-  private LinkedList<List<T>> pendingToBeMerged;
-  protected final MergeManagerImpl<K,V> manager;
+  private LinkedList<List<T>> pendingToBeMerged; // 待合并队列
+  protected final MergeManagerImpl<K,V> manager; // 所属的MergeManagerImpl
   private final ExceptionReporter reporter;
   private boolean closed = false;
-  private final int mergeFactor;
+  private final int mergeFactor; // 表示这个merger最多可做几路的合并
   
   public MergeThread(MergeManagerImpl<K,V> manager, int mergeFactor,
                      ExceptionReporter reporter) {
@@ -49,24 +49,24 @@ abstract class MergeThread<T,K,V> extends Thread {
   
   public synchronized void close() throws InterruptedException {
     closed = true;
-    waitForMerge();
-    interrupt();
+    waitForMerge(); // 等待，直至该线程的队列中不再有需要合并的数据源
+    interrupt(); // 中止线程的运行
   }
 
-  public void startMerge(Set<T> inputs) {
+  public void startMerge(Set<T> inputs) { // 将数据源集合inputs挂入pendingToBeMerged队列
     if (!closed) {
       numPending.incrementAndGet();
       List<T> toMergeInputs = new ArrayList<T>();
-      Iterator<T> iter=inputs.iterator();
+      Iterator<T> iter=inputs.iterator(); // inputs是个序列，这个序列的每个元素
       for (int ctr = 0; iter.hasNext() && ctr < mergeFactor; ++ctr) {
-        toMergeInputs.add(iter.next());
+        toMergeInputs.add(iter.next()); // 从inputs搜集需要合并的输入，不超过mergeFactor个，也就是说，这个线程只能进行最多mergeFactor路的合并
         iter.remove();
       }
       LOG.info(getName() + ": Starting merge with " + toMergeInputs.size() + 
                " segments, while ignoring " + inputs.size() + " segments");
       synchronized(pendingToBeMerged) {
-        pendingToBeMerged.addLast(toMergeInputs);
-        pendingToBeMerged.notifyAll();
+        pendingToBeMerged.addLast(toMergeInputs); // 将一组需要合并的输入挂入队列
+        pendingToBeMerged.notifyAll(); // 然后发出通知，唤醒相关的线程
       }
     }
   }

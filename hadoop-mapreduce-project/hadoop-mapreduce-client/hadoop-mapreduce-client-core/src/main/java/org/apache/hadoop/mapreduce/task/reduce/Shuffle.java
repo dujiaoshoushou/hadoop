@@ -78,8 +78,8 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
     
     scheduler = new ShuffleSchedulerImpl<K, V>(jobConf, taskStatus, reduceId,
         this, copyPhase, context.getShuffledMapsCounter(),
-        context.getReduceShuffleBytes(), context.getFailedShuffleCounter());
-    merger = createMergeManager(context);
+        context.getReduceShuffleBytes(), context.getFailedShuffleCounter()); // 创建Shuffle所需的调度器，
+    merger = createMergeManager(context); // 创建Shuffle内部的merger
   }
 
   protected MergeManager<K, V> createMergeManager(
@@ -90,7 +90,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
         context.getSpilledRecordsCounter(),
         context.getReduceCombineInputCounter(),
         context.getMergedMapOutputsCounter(), this, context.getMergePhase(),
-        context.getMapOutputFile());
+        context.getMapOutputFile()); // 创建MergeManagerImpl对象和Merger线程
   }
 
   @Override
@@ -112,14 +112,14 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
     boolean isLocal = localMapFiles != null;
     final int numFetchers = isLocal ? 1 :
         jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
-    Fetcher<K, V>[] fetchers = new Fetcher[numFetchers];
-    if (isLocal) {
+    Fetcher<K, V>[] fetchers = new Fetcher[numFetchers]; // 创建一个Fetcher数组，相当于一个线程池
+    if (isLocal) { // 如果Mapper与Reducer在同一机器上，那就只需要本地Fetcher
       fetchers[0] = new LocalFetcher<K, V>(jobConf, reduceId, scheduler,
           merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
-          localMapFiles);
-      fetchers[0].start();
+          localMapFiles); // LocalFetcher是对Fetcher的扩充，也是线程
+      fetchers[0].start(); // 本地Fetcher只有一个
     } else {
-      for (int i=0; i < numFetchers; ++i) { // 数量取决于MapTask的多少
+      for (int i=0; i < numFetchers; ++i) { // 数量取决于MapTask的多少，启动所有fetcher
         fetchers[i] = new Fetcher<K, V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
                                        reduceTask.getShuffleSecret()); // 数据复制这
@@ -127,7 +127,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
       }
     }
     
-    // Wait for shuffle to complete successfully
+    // Wait for shuffle to complete successfully 等待所有Fetcher都文爱车，每次超时就报告一下进度
     while (!scheduler.waitUntilDone(PROGRESS_FREQUENCY)) {
       reporter.progress();
       
@@ -139,10 +139,10 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
       }
     }
 
-    // Stop the event-fetcher thread，数据复制已经完成
+    // Stop the event-fetcher thread，数据复制已经完成，shuffle操作已完成，所有MapTask的输出文件都已拷贝过来
     eventFetcher.shutDown();
     
-    // Stop the map-output fetcher threads
+    // Stop the map-output fetcher threads 关闭所有的Fetcher
     for (Fetcher<K, V> fetcher : fetchers) {
       fetcher.shutDown();
     }
@@ -151,13 +151,13 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>,
     scheduler.close();
 
     copyPhase.complete(); // copy is already complete，数据复制阶段到此接受
-    taskStatus.setPhase(TaskStatus.Phase.SORT);
-    reduceTask.statusUpdate(umbilical);
+    taskStatus.setPhase(TaskStatus.Phase.SORT); // 下一步就是Reducer一侧的MergeSort了
+    reduceTask.statusUpdate(umbilical); // 通过"脐带"向MRAppMaster更新状态
 
     // Finish the on-going merges...
     RawKeyValueIterator kvIter = null;
     try {
-      kvIter = merger.close();
+      kvIter = merger.close(); // == MergeManagerImpl.close()，合并和排序，完成后返回一个队列，即kvIter
     } catch (Throwable e) {
       throw new ShuffleError("Error while doing final merge ", e);
     }

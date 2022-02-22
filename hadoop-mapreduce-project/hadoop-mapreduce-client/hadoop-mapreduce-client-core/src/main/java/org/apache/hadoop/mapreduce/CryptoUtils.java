@@ -138,9 +138,9 @@ public class CryptoUtils {
             + Base64.encodeBase64URLSafeString(iv) + "]");
       }
       return new CryptoFSDataOutputStream(out, CryptoCodec.getInstance(conf),
-          getBufferSize(conf), getEncryptionKey(), iv, closeOutputStream);
-    } else {
-      return out;
+          getBufferSize(conf), getEncryptionKey(), iv, closeOutputStream); // 在out，即Spill文件基础上创建加密通道，返回后就成为partitionOut
+    } else { // 如果不加密
+      return out; // 如果不加密那就是上面的out本身。这里in为形参，实参是上面的out
     }
   }
 

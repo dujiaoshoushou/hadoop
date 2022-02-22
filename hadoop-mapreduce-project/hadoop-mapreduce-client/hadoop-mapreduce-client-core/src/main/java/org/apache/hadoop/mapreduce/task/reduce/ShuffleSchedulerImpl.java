@@ -148,11 +148,11 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
   @Override
   public void resolve(TaskCompletionEvent event) {
     switch (event.getTaskStatus()) {
-    case SUCCEEDED:
-      URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
+    case SUCCEEDED: // MapTask成功完成运行
+      URI u = getBaseURI(reduceId, event.getTaskTrackerHttp()); // 获取其URI
       addKnownMapOutput(u.getHost() + ":" + u.getPort(),
           u.toString(),
-          event.getTaskAttemptId());
+          event.getTaskAttemptId()); // 将这个MapTask所在的节点主机记录下来，供Fetcher线程使用
       maxMapRuntime = Math.max(maxMapRuntime, event.getTaskRunTime());
       break;
     case FAILED:

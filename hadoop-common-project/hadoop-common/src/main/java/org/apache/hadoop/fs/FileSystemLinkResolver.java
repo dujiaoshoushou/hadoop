@@ -78,8 +78,8 @@ public abstract class FileSystemLinkResolver<T> {
     FileSystem fs = filesys;
     for (boolean isLink = true; isLink;) {
       try {
-        in = doCall(p);
-        isLink = false;
+        in = doCall(p); // ==
+        isLink = false; // 如果doCall成功了，就不继续循环了。
       } catch (UnresolvedLinkException e) {
         if (!filesys.resolveSymlinks) {
           throw new IOException("Path " + path + " contains a symlink"
@@ -95,15 +95,15 @@ public abstract class FileSystemLinkResolver<T> {
           throw new IOException("Possible cyclic loop while " +
                                 "following symbolic link " + path);
         }
-        // Resolve the first unresolved path component
+        // Resolve the first unresolved path component，如果是因为符号连接解析失败
         p = FSLinkResolver.qualifySymlinkTarget(fs.getUri(), p,
-            filesys.resolveLink(p));
-        fs = FileSystem.getFSofPath(p, filesys.getConf());
+            filesys.resolveLink(p)); // 把文件路径换成符号连接的目标
+        fs = FileSystem.getFSofPath(p, filesys.getConf()); //获知该路径所在的文件系统
         // Have to call next if it's a new FS
-        if (!fs.equals(filesys)) {
-          return next(fs, p);
+        if (!fs.equals(filesys)) { // 如果不是在同一文件系统中
+          return next(fs, p); // 就调用那一种文件系统的open()函数
         }
-        // Else, we keep resolving with this filesystem
+        // Else, we keep resolving with this filesystem,如果是在同一文件系统中，就继续循环
       }
     }
     // Successful call, path was fully resolved

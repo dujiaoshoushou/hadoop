@@ -1261,7 +1261,7 @@ abstract public class Task implements Writable, Configurable {
       while (true) {
         try {
           umbilical.commitPending(taskId, taskStatus);
-          break;
+          break; // 如果在commitPending()期间并未发生异常就break，否则重试
         } catch (InterruptedException ie) {
           // ignore
         } catch (IOException ie) {
@@ -1386,7 +1386,7 @@ abstract public class Task implements Writable, Configurable {
     int retries = MAX_RETRIES;
     while (true) {
       try {
-        umbilical.done(getTaskID());
+        umbilical.done(getTaskID()); // 向MRAppMaster上的TaskAttemptImpl发生TA_DONE事件
         LOG.info("Task '" + taskId + "' done.");
         return;
       } catch (IOException ie) {
@@ -1575,7 +1575,7 @@ abstract public class Task implements Writable, Configurable {
     }
     
     public synchronized void setWriter(Writer<K, V> writer) {
-      this.writer = writer;
+      this.writer = writer; // 使writer成为CombineOutputCollector的writer
     }
 
     public synchronized void collect(K key, V value)
@@ -1743,7 +1743,7 @@ abstract public class Task implements Writable, Configurable {
                                                               rIter, 
                                                               inputKeyCounter, 
                                                               inputValueCounter, 
-                                                              output, 
+                                                              output, // 这个output就是trackedRW
                                                               committer, 
                                                               reporter, 
                                                               comparator, 
@@ -1753,7 +1753,7 @@ abstract public class Task implements Writable, Configurable {
     org.apache.hadoop.mapreduce.Reducer<INKEY,INVALUE,OUTKEY,OUTVALUE>.Context 
         reducerContext = 
           new WrappedReducer<INKEY, INVALUE, OUTKEY, OUTVALUE>().getReducerContext(
-              reduceContext);
+              reduceContext); // 创建ReduceContextImpl对象，这就是reducer.run()中的那个context
 
     return reducerContext;
   }
@@ -1795,7 +1795,7 @@ abstract public class Task implements Writable, Configurable {
         (Class<? extends Reducer<K,V,K,V>>) job.getCombinerClass();
 
       if (cls != null) {
-        return new OldCombinerRunner(cls, job, inputCounter, reporter);
+        return new OldCombinerRunner(cls, job, inputCounter, reporter); // 老API中的设置
       }
       // make a task context so we can get the classes
       org.apache.hadoop.mapreduce.TaskAttemptContext taskContext =
@@ -1803,13 +1803,13 @@ abstract public class Task implements Writable, Configurable {
             reporter);
       Class<? extends org.apache.hadoop.mapreduce.Reducer<K,V,K,V>> newcls = 
         (Class<? extends org.apache.hadoop.mapreduce.Reducer<K,V,K,V>>)
-           taskContext.getCombinerClass();
+           taskContext.getCombinerClass(); // 新API中的设置
       if (newcls != null) {
         return new NewCombinerRunner<K,V>(newcls, job, taskId, taskContext, 
-                                          inputCounter, reporter, committer);
+                                          inputCounter, reporter, committer); // 返回NewCombinerRunner，newcls则是具体的Combiner
       }
       
-      return null;
+      return null; // 如果未加设置，则combinerRunner有可能是null
     }
   }
   

@@ -381,7 +381,7 @@ public class DBCountPageView extends Configured implements Tool {
       for(LongWritable value: values) {
         sum += value.get();
       }
-      context.write(new PageviewRecord(key.toString(), sum), n);
+      context.write(new PageviewRecord(key.toString(), sum), n); // == TaskInputOupputContextImpl.write(key,value)
     }
   }
   

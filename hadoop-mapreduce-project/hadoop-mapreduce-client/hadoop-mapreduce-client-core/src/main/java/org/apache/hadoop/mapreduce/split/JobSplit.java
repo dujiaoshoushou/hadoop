@@ -120,9 +120,9 @@ public class JobSplit {
     }
   
     public void write(DataOutput out) throws IOException {
-      WritableUtils.writeVInt(out, locations.length);
-      for (int i = 0; i < locations.length; i++) {
-        Text.writeString(out, locations[i]);
+      WritableUtils.writeVInt(out, locations.length); // 这是SplitMetaInfo，中locations[]的长度
+      for (int i = 0; i < locations.length; i++) { // 对于locations[]中的每个Split文件
+        Text.writeString(out, locations[i]); // 将其文件路径记入JobSlitMetaFile
       }
       WritableUtils.writeVLong(out, startOffset);
       WritableUtils.writeVLong(out, inputDataLength);

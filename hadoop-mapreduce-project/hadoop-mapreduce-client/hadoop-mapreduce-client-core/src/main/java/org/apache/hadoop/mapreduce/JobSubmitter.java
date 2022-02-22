@@ -323,13 +323,13 @@ class JobSubmitter {
       InterruptedException, ClassNotFoundException {
     Configuration conf = job.getConfiguration();
     InputFormat<?, ?> input =
-      ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
+      ReflectionUtils.newInstance(job.getInputFormatClass(), conf); // 获取本作业的输入格式，默认是TextInputFormat
 
     List<InputSplit> splits = input.getSplits(job); // 为输入（数据）文件生成一个InputSplit的List ，FileInputFormat.getSplits(job)
-    T[] array = (T[]) splits.toArray(new InputSplit[splits.size()]);
+    T[] array = (T[]) splits.toArray(new InputSplit[splits.size()]); // 将List转化成数组
 
     // sort the splits into order based on size, so that the biggest
-    // go first
+    // go first 对数组中的Split按大小排序，大的在前
     Arrays.sort(array, new SplitComparator());
     // 创建Split文件
     JobSplitWriter.createSplitFiles(jobSubmitDir, conf, 
@@ -347,7 +347,7 @@ class JobSubmitter {
     } else {
       maps = writeOldSplits(jConf, jobSubmitDir); // 按老API的要求写Split文件，返回split的数量
     }
-    return maps;
+    return maps; // 这里是应有的Mapper数量，有几个Split就应该有几个Mapper
   }
   
   //method to write splits for old api mapper.

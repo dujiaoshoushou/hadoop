@@ -142,7 +142,7 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     try {
-      while (context.nextKeyValue()) { // 只要还有下一个KV对，就继续循环
+      while (context.nextKeyValue()) { // 只要还有下一个KV对，就继续循环,MapContextImpl.nextKeyValue
         map(context.getCurrentKey(), context.getCurrentValue(), context); // 真正的Map操作
       }
     } finally {

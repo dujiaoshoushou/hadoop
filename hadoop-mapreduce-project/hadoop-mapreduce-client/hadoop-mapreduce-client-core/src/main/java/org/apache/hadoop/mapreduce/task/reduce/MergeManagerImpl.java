@@ -220,7 +220,7 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
 
     boolean allowMemToMemMerge = 
       jobConf.getBoolean(MRJobConfig.REDUCE_MEMTOMEM_ENABLED, false);
-    if (allowMemToMemMerge) {
+    if (allowMemToMemMerge) { // IntermediateMemoryToMemoryMerger线程创建是有条件的，可以配置
       this.memToMemMerger = 
         new IntermediateMemoryToMemoryMerger(this,
                                              memToMemMergeOutputsThreshold);
@@ -229,10 +229,10 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
       this.memToMemMerger = null;
     }
     
-    this.inMemoryMerger = createInMemoryMerger();
+    this.inMemoryMerger = createInMemoryMerger(); // 创建InMemoryMerger线程
     this.inMemoryMerger.start();
     
-    this.onDiskMerger = new OnDiskMerger(this);
+    this.onDiskMerger = new OnDiskMerger(this); // 创建OnDiskMerger线程
     this.onDiskMerger.start();
     
     this.mergePhase = mergePhase;
@@ -265,7 +265,7 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
                                              long requestedSize,
                                              int fetcher
                                              ) throws IOException {
-    if (requestedSize > maxSingleShuffleLimit) {
+    if (requestedSize > maxSingleShuffleLimit) { // 如果内存中容纳不下就只好放在磁盘上
       LOG.info(mapId + ": Shuffling to disk since " + requestedSize + 
                " is greater than maxSingleShuffleLimit (" + 
                maxSingleShuffleLimit + ")");
@@ -300,7 +300,7 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
     LOG.debug(mapId + ": Proceeding with shuffle since usedMemory ("
         + usedMemory + ") is lesser than memoryLimit (" + memoryLimit + ")."
         + "CommitMemory is (" + commitMemory + ")"); 
-    return unconditionalReserve(mapId, requestedSize, true);
+    return unconditionalReserve(mapId, requestedSize, true); // 内存中能容纳
   }
   
   /**
@@ -353,10 +353,10 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
   }
   
   public synchronized void closeOnDiskFile(CompressAwarePath file) {
-    onDiskMapOutputs.add(file);
+    onDiskMapOutputs.add(file); // 将输出文件加入OnDiskMapOutputs集合
     
     if (onDiskMapOutputs.size() >= (2 * ioSortFactor - 1)) {
-      onDiskMerger.startMerge(onDiskMapOutputs);
+      onDiskMerger.startMerge(onDiskMapOutputs); // 太大了，单靠InMemoryMerger解决不了，只好请OnDiskMerge帮忙
     }
   }
   
@@ -366,17 +366,17 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
     if (memToMemMerger != null) { 
       memToMemMerger.close();
     }
-    inMemoryMerger.close();
-    onDiskMerger.close();
+    inMemoryMerger.close(); // == MergeThread.close()
+    onDiskMerger.close(); // == MergeThread.close()
     
     List<InMemoryMapOutput<K, V>> memory = 
-      new ArrayList<InMemoryMapOutput<K, V>>(inMemoryMergedMapOutputs);
-    inMemoryMergedMapOutputs.clear();
-    memory.addAll(inMemoryMapOutputs);
+      new ArrayList<InMemoryMapOutput<K, V>>(inMemoryMergedMapOutputs); // 创建一个InMemoryMapOutput的集合memory
+    inMemoryMergedMapOutputs.clear(); // 清除inMemoryMergedMapOutputs集合的内容
+    memory.addAll(inMemoryMapOutputs); // 把inMemoryMapOutputs集合的内容转移过去
     inMemoryMapOutputs.clear();
-    List<CompressAwarePath> disk = new ArrayList<CompressAwarePath>(onDiskMapOutputs);
-    onDiskMapOutputs.clear();
-    return finalMerge(jobConf, rfs, memory, disk);
+    List<CompressAwarePath> disk = new ArrayList<CompressAwarePath>(onDiskMapOutputs); // 磁盘上.merged文件的集合
+    onDiskMapOutputs.clear(); // 清除onDiskMapOutputs集合的内容
+    return finalMerge(jobConf, rfs, memory, disk); // 合并memory和disk两个集合中的数据源
   }
    
   private class IntermediateMemoryToMemoryMerger 
@@ -455,23 +455,23 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
       //in the merge method)
 
       //figure out the mapId 
-      TaskAttemptID mapId = inputs.get(0).getMapId();
-      TaskID mapTaskId = mapId.getTaskID();
+      TaskAttemptID mapId = inputs.get(0).getMapId(); // 获取其中第一个输入源
+      TaskID mapTaskId = mapId.getTaskID(); // 属于哪一个任务
 
       List<Segment<K, V>> inMemorySegments = new ArrayList<Segment<K, V>>();
       long mergeOutputSize = 
-        createInMemorySegments(inputs, inMemorySegments,0);
-      int noInMemorySegments = inMemorySegments.size();
+        createInMemorySegments(inputs, inMemorySegments,0); // 根据输入列表inputs，构建一个用于合并的Segment列表
+      int noInMemorySegments = inMemorySegments.size(); // 共有几个Segment
 
       Path outputPath = 
         mapOutputFile.getInputFileForWrite(mapTaskId,
                                            mergeOutputSize).suffix(
-                                               Task.MERGED_OUTPUT_PREFIX);
+                                               Task.MERGED_OUTPUT_PREFIX); // 以第一个输入源（Mapper）的TaskId为主构成输出文件名，扩充名为".merged"
 
-      FSDataOutputStream out = CryptoUtils.wrapIfNecessary(jobConf, rfs.create(outputPath));
+      FSDataOutputStream out = CryptoUtils.wrapIfNecessary(jobConf, rfs.create(outputPath)); // 在本地文件系统中创建输出文件
       Writer<K, V> writer = new Writer<K, V>(jobConf, out,
           (Class<K>) jobConf.getMapOutputKeyClass(),
-          (Class<V>) jobConf.getMapOutputValueClass(), codec, null, true);
+          (Class<V>) jobConf.getMapOutputValueClass(), codec, null, true); // 针对K，V数据类型的Writer，也需要压缩
 
       RawKeyValueIterator rIter = null;
       CompressAwarePath compressAwarePath;
@@ -485,12 +485,12 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
                              inMemorySegments, inMemorySegments.size(),
                              new Path(reduceId.toString()),
                              (RawComparator<K>)jobConf.getOutputKeyComparator(),
-                             reporter, spilledRecordsCounter, null, null);
+                             reporter, spilledRecordsCounter, null, null); // 合并inMemorySegments列表中的各个Segment，这个Merger就是hadoop.mapred.Merger
         
-        if (null == combinerClass) {
-          Merger.writeFile(rIter, writer, reporter, jobConf);
-        } else {
-          combineCollector.setWriter(writer);
+        if (null == combinerClass) { // 如果没有安排Combine，就将结果直接写入文件
+          Merger.writeFile(rIter, writer, reporter, jobConf); // writer会通过输出流out把排好序的数据写入outputPath，即扩充名为".merged"的文件
+        } else { // 如果安排了Combine环节，就要经过Combine环节
+          combineCollector.setWriter(writer); // 在writer中插入combiner
           combineAndSpill(rIter, reduceCombineInputCounter);
         }
         writer.close();
@@ -509,7 +509,7 @@ public class MergeManagerImpl<K, V> implements MergeManager<K, V> {
         throw e;
       }
 
-      // Note the output of the merge
+      // Note the output of the merge 关闭输出文件
       closeOnDiskFile(compressAwarePath);
     }
 

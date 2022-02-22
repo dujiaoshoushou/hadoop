@@ -191,11 +191,11 @@ class Fetcher<K,V> extends Thread {
           merger.waitForResource();
 
           // Get a host to shuffle from
-          host = scheduler.getHost();
+          host = scheduler.getHost(); // scheduler获取一个已成功完成运行的MapTask所在节点
           metrics.threadBusy();
 
           // Shuffle
-          copyFromHost(host);
+          copyFromHost(host); // Shuffle，从那个节点复制MapTask输出数据
         } finally {
           if (host != null) {
             scheduler.freeHost(host);
@@ -268,11 +268,11 @@ class Fetcher<K,V> extends Thread {
     DataInputStream input = null;
 
     try {
-      setupConnectionsWithRetry(url);
+      setupConnectionsWithRetry(url); // 与对方建立HTTP连接
       if (stopped) {
         abortConnect(host, remaining);
       } else {
-        input = new DataInputStream(connection.getInputStream());
+        input = new DataInputStream(connection.getInputStream()); // 将此连接作为输入流
       }
     } catch (TryAgainLaterException te) {
       LOG.warn("Connection rejected by the host " + te.host +
@@ -305,7 +305,7 @@ class Fetcher<K,V> extends Thread {
   protected void copyFromHost(MapHost host) throws IOException {
     // reset retryStartTime for a new host
     retryStartTime = 0;
-    // Get completed maps on 'host'
+    // Get completed maps on 'host' 从scheduler获取目标节点上的MapTask集合
     List<TaskAttemptID> maps = scheduler.getMapsForHost(host);
     
     // Sanity check to catch hosts with only 'OBSOLETE' maps, 
@@ -319,10 +319,10 @@ class Fetcher<K,V> extends Thread {
         + maps);
     }
     
-    // List of maps to be fetched yet
+    // List of maps to be fetched yet 其中有待完成shuffle的MapTask集合
     Set<TaskAttemptID> remaining = new HashSet<TaskAttemptID>(maps);
     
-    // Construct the url and connect
+    // Construct the url and connect 生成针对MapTask所在节点的URL
     URL url = getMapOutputURL(host, maps);
     DataInputStream input = null;
     
@@ -512,7 +512,7 @@ class Fetcher<K,V> extends Thread {
       }
 
       InputStream is = input;
-      is = CryptoUtils.wrapIfNecessary(jobConf, is, compressedLength);
+      is = CryptoUtils.wrapIfNecessary(jobConf, is, compressedLength); // 如果需要解压/解密
       compressedLength -= CryptoUtils.cryptoPadding(jobConf);
       decompressedLength -= CryptoUtils.cryptoPadding(jobConf);
       
@@ -529,7 +529,7 @@ class Fetcher<K,V> extends Thread {
       
       // Get the location for the map output - either in-memory or on-disk
       try {
-        mapOutput = merger.reserve(mapId, decompressedLength, id);
+        mapOutput = merger.reserve(mapId, decompressedLength, id); // 为merge预留一个MapOutput：InMemoryMapOutput或OnDiskMapOutput
       } catch (IOException ioe) {
         // kill this reduce attempt
         ioErrs.increment(1);
@@ -553,7 +553,7 @@ class Fetcher<K,V> extends Thread {
             + mapOutput.getMapId() + " decomp: " + decompressedLength
             + " len: " + compressedLength + " to " + mapOutput.getDescription());
         mapOutput.shuffle(host, is, compressedLength, decompressedLength,
-            metrics, reporter);
+            metrics, reporter); // 跨节点从Mapper方拷贝文件内容到InMemoryMapOutput 或 OnDiskMapOutput
       } catch (java.lang.InternalError | Exception e) {
         LOG.warn("Failed to shuffle for fetcher#"+id, e);
         throw new IOException(e);
@@ -565,9 +565,9 @@ class Fetcher<K,V> extends Thread {
       retryStartTime = 0;
       
       scheduler.copySucceeded(mapId, host, compressedLength, 
-                              startTime, endTime, mapOutput);
+                              startTime, endTime, mapOutput); // 告诉调度器，完成了一个节点的map输出文件拷贝
       // Note successful shuffle
-      remaining.remove(mapId);
+      remaining.remove(mapId); // 这个MapTask的输出已经shuffle完毕
       metrics.successFetch();
       return null;
     } catch (IOException ioe) {
